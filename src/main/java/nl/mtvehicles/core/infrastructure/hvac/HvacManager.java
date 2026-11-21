@@ -92,6 +92,7 @@ public final class HvacManager {
         private long remoteUntil; // started remotely: runs without a driver until this time (millis), 0 = not
         private Entity remoteRef; // armor stand of the vehicle which is running remotely
         private long lastActive = System.currentTimeMillis();
+        private long stateSince;  // when the A/C or heater last started or stopped (millis) - for its minimum run and off times
 
         private Climate(String license) {
             this.license = license;
@@ -136,8 +137,6 @@ public final class HvacManager {
     private static final double SUN_HEAT_F = 14.0;
     /** Heat from each occupant (°F above the surroundings) */
     private static final double BODY_HEAT_F = 1.0;
-    /** The A/C or heater works until the cabin is this close to the target (°F) */
-    private static final double DEADBAND_F = 0.5;
     /** Power (°F per second) of fan levels 1, 2 and 3 */
     private static final double[] FAN_POWER = {0.0, 0.25, 0.5, 0.9};
     private static final long KEEP_STATE_MILLIS = 5 * 60 * 1000L;
@@ -459,7 +458,7 @@ public final class HvacManager {
     public static void stopRemote(Climate climate) {
         climate.remoteUntil = 0L;
         climate.remoteRef = null;
-        climate.running = false;
+        changeState(climate, false, climate.cooling, System.currentTimeMillis());
     }
 
     private static void saveSettings(Climate climate) {
@@ -524,7 +523,10 @@ public final class HvacManager {
 
             active.add(license);
             final Climate climate = getOrCreate(license, mainSeat.getLocation());
-            if (climate.remoteUntil != 0L) stopRemote(climate); // there is a driver now, the remote start is not needed anymore
+            if (climate.remoteUntil != 0L) { // there is a driver now, the remote start is not needed anymore (the A/C just keeps going)
+                climate.remoteUntil = 0L;
+                climate.remoteRef = null;
+            }
             simulate(climate, mainSeat.getLocation(), occupants.size(), true);
 
             if (shouldUseActionBar() && climate.on) {
@@ -549,6 +551,11 @@ public final class HvacManager {
                 final Double fuel = currentFuel(climate.license);
                 if (fuel != null && fuel < 1) stopRemote(climate);
             }
+        }
+
+        // Nothing is working in a vehicle which nobody is in (and which isn't running remotely)
+        for (Climate climate : climates.values()) {
+            if (climate.running && !active.contains(climate.license) && climate.remoteUntil == 0L) changeState(climate, false, climate.cooling, now);
         }
 
         // Forget vehicles nobody has been in for a while (their cabin has cooled down/warmed up anyway)
@@ -585,32 +592,61 @@ public final class HvacManager {
 
         // The cabin follows its surroundings: the air around it, plus the sun and the people in it
         final double equilibrium = climate.ambientF + solarGainF(location) + occupants * BODY_HEAT_F;
+        final double cabinBeforeLeak = climate.cabinF;
         climate.cabinF += (equilibrium - climate.cabinF) / LEAK_SECONDS;
 
-        climate.running = false;
-        if (!climate.on) return;
+        final long now = System.currentTimeMillis();
+        final Cycle cycle = cycle();
 
         // The engine must be running (there is a driver, or the vehicle was started remotely - checked by the caller) and there must be fuel
-        if (!engineRunning) return;
         final boolean fuelUsed = isFuelUsed(climate.license);
         final Double fuel = fuelUsed ? currentFuel(climate.license) : null;
-        if (fuelUsed && (fuel == null || fuel < 1)) return;
+        final boolean canRun = climate.on && engineRunning && !(fuelUsed && (fuel == null || fuel < 1));
+        if (!canRun) {
+            changeState(climate, false, climate.cooling, now);
+            return;
+        }
 
-        final double error = climate.targetF - climate.cabinF;
-        final boolean wantCooling = error < -DEADBAND_F && climate.mode != Mode.HEAT;
-        final boolean wantHeating = error > DEADBAND_F && climate.mode != Mode.COOL;
-        if (!wantCooling && !wantHeating) return;
+        // Like EZvac's thermostat: it starts when the cabin is 'start' away from the target, runs until it is 'stop' past it,
+        // and is held on for at least the minimum run time and off for at least the minimum off time. So it doesn't click on and off.
+        final double error = climate.targetF - climate.cabinF; // negative: too warm
+        final boolean coolingAllowed = climate.mode != Mode.HEAT;
+        final boolean heatingAllowed = climate.mode != Mode.COOL;
+        final long sinceChange = now - climate.stateSince + 500L; // (a little leeway for the timing of the ticks)
 
-        final int fan = climate.fan != 0 ? climate.fan : autoFan(Math.abs(error));
+        boolean run = climate.running;
+        boolean cooling = climate.cooling;
+        if (run) {
+            final boolean modeAllows = cooling ? coolingAllowed : heatingAllowed;
+            // Whether it got to the stop point (judged before the cabin leaked a little again this second, which it does while held there)
+            final double errorBeforeLeak = climate.targetF - cabinBeforeLeak;
+            final boolean reachedStop = cooling ? errorBeforeLeak >= cycle.stopOffsetF - 1.0E-6 : errorBeforeLeak <= -cycle.stopOffsetF + 1.0E-6;
+            if (!modeAllows) run = false; // the mode was changed: stop at once
+            else if (reachedStop && sinceChange >= cycle.minRunMillis) run = false;
+        } else if (sinceChange >= cycle.minOffMillis) {
+            if (error <= -cycle.startOffsetF && coolingAllowed) { run = true; cooling = true; }
+            else if (error >= cycle.startOffsetF && heatingAllowed) { run = true; cooling = false; }
+        }
+        changeState(climate, run, cooling, now);
+        if (!run) return;
+
+        // Fan: its power must be enough for the cabin to keep up with the heat coming in or leaking out
+        final double load = Math.abs(equilibrium - climate.cabinF) / LEAK_SECONDS;
+        final int fan = climate.fan != 0 ? climate.fan : Math.max(autoFan(Math.abs(error)), fanForLoad(load));
 
         // An A/C works worse in extreme heat
         double power = FAN_POWER[fan];
-        if (wantCooling && climate.ambientF > 100.0) power *= Math.max(0.5, 1.0 - (climate.ambientF - 100.0) / 100.0);
+        if (cooling && climate.ambientF > 100.0) power *= Math.max(0.5, 1.0 - (climate.ambientF - 100.0) / 100.0);
 
-        final double change = Math.min(Math.abs(error), power);
-        climate.cabinF += wantCooling ? -change : change;
-        climate.running = true;
-        climate.cooling = wantCooling;
+        // Near the target it slows down (like EZvac's variable-speed equipment) and it doesn't go further than the stop point
+        final double away = cooling ? -error : error; // how far the cabin still is from the target on the wrong side (negative: past it)
+        final double ratio = cycle.approachBandF <= 0 ? 1.0 : Math.max(0.0, Math.min(1.0, away / cycle.approachBandF));
+        // (but never below what the load takes, or a hot day would stop it from reaching the target)
+        power = Math.max(power * (cycle.minCapacity + (1.0 - cycle.minCapacity) * ratio), Math.min(power, load * 1.1));
+
+        final double toStop = Math.max(0.0, away + cycle.stopOffsetF);
+        final double change = Math.min(toStop, power);
+        climate.cabinF += cooling ? -change : change;
 
         // Extra fuel
         final double usage = number(config(DefaultConfig.Option.HVAC_FUEL_USAGE), 0.02) * (fan / 2.0);
@@ -634,6 +670,63 @@ public final class HvacManager {
             ConfigModule.vehicleDataConfig.set(license, VehicleDataConfig.Option.FUEL, fuel);
             ConfigModule.vehicleDataConfig.save();
         }
+    }
+
+    /**
+     * When the A/C or heater switches on and off (see the config: hvac.cycle). Taken from EZvac's config if it is installed and syncing is on.
+     */
+    private static final class Cycle {
+        double startOffsetF = 1.0;
+        double stopOffsetF = 0.3;
+        long minRunMillis = 15_000L;
+        long minOffMillis = 10_000L;
+        double approachBandF = 3.0;
+        double minCapacity = 0.4;
+    }
+
+    private static Cycle cachedCycle;
+    private static long cycleReadAt;
+
+    private static Cycle cycle() {
+        final long now = System.currentTimeMillis();
+        if (cachedCycle != null && now - cycleReadAt < 30_000L) return cachedCycle;
+
+        final Cycle cycle = new Cycle();
+        cycle.startOffsetF = Math.max(0.1, number(config(DefaultConfig.Option.HVAC_START_OFFSET_F), 1.0));
+        cycle.stopOffsetF = Math.max(0.0, number(config(DefaultConfig.Option.HVAC_STOP_OFFSET_F), 0.3));
+        cycle.minRunMillis = (long) (Math.max(0.0, number(config(DefaultConfig.Option.HVAC_MIN_RUN_SECONDS), 15.0)) * 1000.0);
+        cycle.minOffMillis = (long) (Math.max(0.0, number(config(DefaultConfig.Option.HVAC_MIN_OFF_SECONDS), 10.0)) * 1000.0);
+        cycle.approachBandF = Math.max(0.0, number(config(DefaultConfig.Option.HVAC_APPROACH_BAND_F), 3.0));
+        cycle.minCapacity = Math.max(0.05, Math.min(1.0, number(config(DefaultConfig.Option.HVAC_MIN_CAPACITY), 0.4)));
+
+        if (Boolean.TRUE.equals(config(DefaultConfig.Option.HVAC_SYNC_EZVAC_TIMINGS))) {
+            final double[] ezvac = EzvacBridge.controllerTimings();
+            if (ezvac != null) {
+                cycle.startOffsetF = Math.max(0.1, ezvac[0]);
+                cycle.stopOffsetF = Math.max(0.0, ezvac[1]);
+                cycle.minRunMillis = (long) (Math.max(0.0, ezvac[2]) * 1000.0);
+                cycle.minOffMillis = (long) (Math.max(0.0, ezvac[3]) * 1000.0);
+                cycle.approachBandF = Math.max(0.0, ezvac[4]);
+                cycle.minCapacity = Math.max(0.05, Math.min(1.0, ezvac[5]));
+            }
+        }
+        cachedCycle = cycle;
+        cycleReadAt = now;
+        return cycle;
+    }
+
+    private static void changeState(Climate climate, boolean running, boolean cooling, long now) {
+        if (climate.running != running) climate.stateSince = now;
+        climate.running = running;
+        climate.cooling = cooling;
+    }
+
+    /** The lowest fan level whose power is enough to keep up with a load (°F per second), with some room to spare. */
+    private static int fanForLoad(double load) {
+        for (int level = 1; level < 3; level++) {
+            if (FAN_POWER[level] >= load * 1.3) return level;
+        }
+        return 3;
     }
 
     private static int autoFan(double errorF) {

@@ -253,3 +253,18 @@ hvac:
   # can be started from there while nobody sits in it: the climate control then runs for this many minutes (using fuel),
   # so the vehicle is comfortable when its owner gets in. 0 = switching on from a dashboard only changes the setting.
   remoteStartMinutes: 10
+
+  # When the A/C or heater switches on and off. It works like EZvac's thermostat so it doesn't keep clicking on and off:
+  # it starts when the cabin is 'startOffsetF' away from the target, then runs until it is 'stopOffsetF' past it,
+  # runs at least 'minimumRunSeconds' and rests at least 'minimumOffSeconds', and slows down within 'approachBandF' of the target
+  # (to 'minimumCapacity' of its full power).
+  # With syncWithEzvac the values of EZvac's own config (controller.* and performance.variable-speed.*) are used instead
+  # whenever EZvac is installed, so cars and houses behave the same. The values below are used without EZvac (or with this off).
+  cycle:
+    syncWithEzvac: true
+    startOffsetF: 1.0
+    stopOffsetF: 0.3
+    minimumRunSeconds: 15
+    minimumOffSeconds: 10
+    approachBandF: 3.0
+    minimumCapacity: 0.4

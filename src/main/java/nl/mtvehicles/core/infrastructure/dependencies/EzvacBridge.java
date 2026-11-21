@@ -115,6 +115,30 @@ public final class EzvacBridge {
     }
 
     /**
+     * The timings of EZvac's thermostat, read from its config.yml (controller.* and performance.variable-speed.*).
+     * @return {startOffsetF, stopOffsetF, minimumRunSeconds, minimumOffSeconds, approachBandF, minimumCapacity}
+     * (cooling and heating are averaged as EZvac has separate values for them), or null if EZvac is not available
+     */
+    public static @Nullable double[] controllerTimings() {
+        if (!available) return null;
+        try {
+            final Plugin ezvac = Bukkit.getPluginManager().getPlugin("EZvac");
+            if (ezvac == null || !ezvac.isEnabled()) return null;
+            final org.bukkit.configuration.file.FileConfiguration c = ezvac.getConfig();
+
+            final double start = (c.getDouble("controller.cooling-start-above-f", 1.0) + c.getDouble("controller.heating-start-below-f", 1.0)) / 2.0;
+            final double stop = (c.getDouble("controller.cooling-stop-below-f", 0.3) + c.getDouble("controller.heating-stop-above-f", 0.3)) / 2.0;
+            final double run = c.getDouble("controller.minimum-run-ticks", 300) / 20.0;
+            final double off = c.getDouble("controller.minimum-off-ticks", 200) / 20.0;
+            final double band = c.getDouble("performance.variable-speed.approach-band-f", 3.0);
+            final double capacity = c.getDouble("performance.variable-speed.minimum-capacity", 0.40);
+            return new double[]{start, stop, run, off, band, capacity};
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
      * Whether the server shows temperatures in °C.
      * @return Null if EZvac is not available
      */

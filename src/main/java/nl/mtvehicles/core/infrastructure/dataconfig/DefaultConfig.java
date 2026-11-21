@@ -386,7 +386,14 @@ public class DefaultConfig extends MTVConfig {
         HVAC_MIN_TARGET("hvac.minTarget", 60.0),
         HVAC_MAX_TARGET("hvac.maxTarget", 85.0),
         HVAC_FUEL_USAGE("hvac.fuelUsage", 0.02),
-        HVAC_REMOTE_START_MINUTES("hvac.remoteStartMinutes", 10);
+        HVAC_REMOTE_START_MINUTES("hvac.remoteStartMinutes", 10),
+        HVAC_SYNC_EZVAC_TIMINGS("hvac.cycle.syncWithEzvac", true),
+        HVAC_START_OFFSET_F("hvac.cycle.startOffsetF", 1.0),
+        HVAC_STOP_OFFSET_F("hvac.cycle.stopOffsetF", 0.3),
+        HVAC_MIN_RUN_SECONDS("hvac.cycle.minimumRunSeconds", 15.0),
+        HVAC_MIN_OFF_SECONDS("hvac.cycle.minimumOffSeconds", 10.0),
+        HVAC_APPROACH_BAND_F("hvac.cycle.approachBandF", 3.0),
+        HVAC_MIN_CAPACITY("hvac.cycle.minimumCapacity", 0.4);
 
         final private String path;
         final private Object defaultValue;
