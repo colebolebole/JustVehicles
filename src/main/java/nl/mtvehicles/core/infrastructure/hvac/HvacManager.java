@@ -10,6 +10,7 @@ import nl.mtvehicles.core.infrastructure.enums.VehicleType;
 import nl.mtvehicles.core.infrastructure.modules.ConfigModule;
 import nl.mtvehicles.core.infrastructure.utils.TextUtils;
 import nl.mtvehicles.core.infrastructure.vehicle.VehicleData;
+import nl.mtvehicles.core.infrastructure.vehicle.VehicleFinder;
 import nl.mtvehicles.core.infrastructure.vehicle.VehicleUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -86,6 +87,9 @@ public final class HvacManager {
         private double targetF;
         private boolean running;  // the A/C or heater is working right now
         private boolean cooling;  // (if running) cooling, otherwise heating
+        private boolean linked;   // linked to a dashboard (see CarClimateApi)
+        private long remoteUntil; // started remotely: runs without a driver until this time (millis), 0 = not
+        private Entity remoteRef; // armor stand of the vehicle which is running remotely
         private long lastActive = System.currentTimeMillis();
 
         private Climate(String license) {
@@ -101,6 +105,9 @@ public final class HvacManager {
         public double getTargetF() { return targetF; }
         public boolean isRunning() { return running; }
         public boolean isCooling() { return cooling; }
+        public boolean isLinked() { return linked; }
+        public boolean isRemoteRunning() { return remoteUntil > System.currentTimeMillis(); }
+        public long getRemoteUntil() { return remoteUntil; }
 
         /**
          * Short description of what the climate control is doing
@@ -302,6 +309,121 @@ public final class HvacManager {
 
         final Object target = data.get(climate.license, VehicleDataConfig.Option.HVAC_TARGET);
         climate.targetF = clampTarget(target instanceof Number ? ((Number) target).doubleValue() : getDefaultTargetF());
+
+        climate.linked = isLinked(climate.license);
+    }
+
+    // --- Linking to a dashboard (see CarClimateApi) ---
+
+    /**
+     * Whether the climate control of a vehicle is linked to a dashboard (such as EZStats).
+     */
+    public static boolean isLinked(String license) {
+        final Object linked = ConfigModule.vehicleDataConfig.get(license, VehicleDataConfig.Option.HVAC_LINKED);
+        return linked instanceof Boolean && (Boolean) linked;
+    }
+
+    /**
+     * Link the climate control of a vehicle to a dashboard, or unlink it. Unlinking also stops a remote start.
+     */
+    public static void setLinked(String license, boolean linked) {
+        ConfigModule.vehicleDataConfig.set(license, VehicleDataConfig.Option.HVAC_LINKED, linked);
+        ConfigModule.vehicleDataConfig.save();
+        final Climate climate = climates.get(license);
+        if (climate != null) {
+            climate.linked = linked;
+            if (!linked) stopRemote(climate);
+        }
+    }
+
+    /**
+     * Get the live climate of a vehicle without creating one (null if the vehicle has not been driven or started remotely recently).
+     */
+    public static @Nullable Climate peek(String license) {
+        return climates.get(license);
+    }
+
+    /**
+     * Get a climate to change settings of: the live one, or - for a vehicle which is not in use - one which only holds the saved settings
+     * (changing it saves them, the vehicle is not simulated).
+     * @return Null if the vehicle has no climate control
+     */
+    public static @Nullable Climate getForControl(String license) {
+        if (!appliesTo(license)) return null;
+        final Climate live = climates.get(license);
+        if (live != null) return live;
+        final Climate detached = new Climate(license);
+        loadSettings(detached);
+        detached.cabinF = Double.NaN;
+        detached.ambientF = Double.NaN;
+        return detached;
+    }
+
+    // --- Remote start ---
+
+    private static int getRemoteStartMinutes() {
+        return (int) Math.max(0, number(config(DefaultConfig.Option.HVAC_REMOTE_START_MINUTES), 10));
+    }
+
+    /**
+     * How many minutes a remotely started climate control runs (0 = remote start is off).
+     */
+    public static int getRemoteStartMinutesSetting() {
+        return getRemoteStartMinutes();
+    }
+
+    /**
+     * Get the climate of a vehicle which is spawned and parked (nobody in it), without a driver - it is created if necessary.
+     * @return Null if the vehicle has no climate control or is not spawned in a loaded chunk
+     */
+    public static @Nullable Climate getParkedClimate(String license) {
+        if (!appliesTo(license)) return null;
+        final Climate existing = climates.get(license);
+        if (existing != null) return existing;
+
+        final VehicleFinder.SpawnedVehicle spawned = VehicleFinder.getSpawned(license);
+        if (spawned == null) return null;
+        return getOrCreate(license, spawned.getLocation());
+    }
+
+    /**
+     * Let the climate control of a parked vehicle run for the configured number of minutes (it uses fuel), so it is comfortable when its owner gets in.
+     * Only for vehicles linked to a dashboard.
+     * @return Null if started, otherwise why it could not be started (a sentence)
+     */
+    public static @Nullable String startRemote(String license) {
+        final int minutes = getRemoteStartMinutes();
+        if (minutes <= 0) return null; // remote start is off: only the setting changes
+
+        final VehicleFinder.SpawnedVehicle spawned = VehicleFinder.getSpawned(license);
+        if (spawned == null) return "The vehicle is not spawned (or its chunk is not loaded), so its climate control can't run now. The setting is saved.";
+        if (spawned.isOccupied()) return null; // somebody is in it: it simply runs
+
+        final Climate climate = getOrCreate(license, spawned.getLocation());
+        if (isFuelUsed(license)) {
+            final Double fuel = VehicleData.fuel.get(license);
+            final Object stored = ConfigModule.vehicleDataConfig.get(license, VehicleDataConfig.Option.FUEL);
+            final double level = fuel != null ? fuel : stored instanceof Number ? ((Number) stored).doubleValue() : 0.0;
+            if (level < 1) return "The vehicle is out of fuel. The setting is saved.";
+        }
+
+        Entity reference = null;
+        for (Entity entity : spawned.getEntities()) {
+            final String name = entity.getCustomName();
+            if (name != null && name.startsWith("MTVEHICLES_SKIN_")) reference = entity;
+        }
+        climate.remoteRef = reference != null ? reference : spawned.getEntities().get(0);
+        climate.remoteUntil = System.currentTimeMillis() + minutes * 60_000L;
+        return null;
+    }
+
+    /**
+     * Stop a remote start.
+     */
+    public static void stopRemote(Climate climate) {
+        climate.remoteUntil = 0L;
+        climate.remoteRef = null;
+        climate.running = false;
     }
 
     private static void saveSettings(Climate climate) {
@@ -365,11 +487,30 @@ public final class HvacManager {
 
             active.add(license);
             final Climate climate = getOrCreate(license, mainSeat.getLocation());
-            simulate(climate, mainSeat.getLocation(), occupants.size());
+            if (climate.remoteUntil != 0L) stopRemote(climate); // there is a driver now, the remote start is not needed anymore
+            simulate(climate, mainSeat.getLocation(), occupants.size(), true);
 
             if (shouldUseActionBar() && climate.on) {
                 final String bar = actionBarText(climate);
                 for (Player player : occupants) sendActionBar(player, bar);
+            }
+        }
+
+        // Parked vehicles whose climate control has been started remotely (from a dashboard)
+        for (Climate climate : new ArrayList<>(climates.values())) {
+            if (climate.remoteUntil == 0L || active.contains(climate.license)) continue;
+
+            final Entity reference = climate.remoteRef;
+            if (now > climate.remoteUntil || reference == null || !reference.isValid() || !climate.on || !climate.linked) {
+                stopRemote(climate);
+                continue;
+            }
+            climate.lastActive = now;
+            simulate(climate, reference.getLocation(), 0, true);
+            if (!climate.running && climate.on && isFuelUsed(climate.license)) {
+                // out of fuel: the engine stops
+                final Double fuel = currentFuel(climate.license);
+                if (fuel != null && fuel < 1) stopRemote(climate);
             }
         }
 
@@ -402,7 +543,7 @@ public final class HvacManager {
     /**
      * Simulate one second.
      */
-    private static void simulate(Climate climate, Location location, int occupants) {
+    private static void simulate(Climate climate, Location location, int occupants, boolean engineRunning) {
         climate.ambientF = ambientF(location);
 
         // The cabin follows its surroundings: the air around it, plus the sun and the people in it
@@ -412,9 +553,10 @@ public final class HvacManager {
         climate.running = false;
         if (!climate.on) return;
 
-        // The engine must be running: there is a driver (checked by the caller) and fuel
+        // The engine must be running (there is a driver, or the vehicle was started remotely - checked by the caller) and there must be fuel
+        if (!engineRunning) return;
         final boolean fuelUsed = isFuelUsed(climate.license);
-        final Double fuel = VehicleData.fuel.get(climate.license);
+        final Double fuel = fuelUsed ? currentFuel(climate.license) : null;
         if (fuelUsed && (fuel == null || fuel < 1)) return;
 
         final double error = climate.targetF - climate.cabinF;
@@ -435,7 +577,26 @@ public final class HvacManager {
 
         // Extra fuel
         final double usage = number(config(DefaultConfig.Option.HVAC_FUEL_USAGE), 0.02) * (fan / 2.0);
-        if (fuelUsed && usage > 0 && fuel != null) VehicleData.fuel.put(climate.license, Math.max(0.0, fuel - usage));
+        if (fuelUsed && usage > 0 && fuel != null) setCurrentFuel(climate.license, Math.max(0.0, fuel - usage));
+    }
+
+    /**
+     * Fuel level (%) of a vehicle: the live value while it has been driven since the server started, otherwise the saved one.
+     */
+    private static @Nullable Double currentFuel(String license) {
+        final Double live = VehicleData.fuel.get(license);
+        if (live != null) return live;
+        final Object stored = ConfigModule.vehicleDataConfig.get(license, VehicleDataConfig.Option.FUEL);
+        return stored instanceof Number ? ((Number) stored).doubleValue() : null;
+    }
+
+    private static void setCurrentFuel(String license, double fuel) {
+        if (VehicleData.fuel.containsKey(license)) {
+            VehicleData.fuel.put(license, fuel);
+        } else {
+            ConfigModule.vehicleDataConfig.set(license, VehicleDataConfig.Option.FUEL, fuel);
+            ConfigModule.vehicleDataConfig.save();
+        }
     }
 
     private static int autoFan(double errorF) {

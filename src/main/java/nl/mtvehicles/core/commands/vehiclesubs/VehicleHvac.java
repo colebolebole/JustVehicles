@@ -1,10 +1,16 @@
 package nl.mtvehicles.core.commands.vehiclesubs;
 
+import de.tr7zw.changeme.nbtapi.NBTItem;
+import nl.mtvehicles.core.api.CarClimateApi;
 import nl.mtvehicles.core.infrastructure.hvac.HvacManager;
 import nl.mtvehicles.core.infrastructure.hvac.HvacMenu;
 import nl.mtvehicles.core.infrastructure.models.MTVSubCommand;
 
+import nl.mtvehicles.core.infrastructure.vehicle.VehicleUtils;
+import org.bukkit.inventory.ItemStack;
+
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * <b>/vehicle hvac</b> (also <b>/vehicle ac</b> and <b>/vehicle climate</b>) - the climate control of the vehicle you are sitting in.
@@ -34,6 +40,10 @@ public class VehicleHvac extends MTVSubCommand {
         if (!HvacManager.mayUse(player)) {
             sendMessage("&cYou may not use the climate control.");
             return true;
+        }
+
+        if (arguments.length >= 2 && (arguments[1].equalsIgnoreCase("link") || arguments[1].equalsIgnoreCase("unlink") || arguments[1].equalsIgnoreCase("remote"))) {
+            return executeDashboard(arguments[1].toLowerCase(Locale.ROOT));
         }
 
         final HvacManager.Climate climate = HvacManager.getClimateOf(player);
@@ -118,7 +128,46 @@ public class VehicleHvac extends MTVSubCommand {
                 break;
         }
 
-        sendMessage("&cUsage: /vehicle hvac [on|off|toggle|auto|cool|heat|mode <auto|cool|heat>|fan <auto|1|2|3>|temp <temperature>|status]");
+        sendMessage("&cUsage: /vehicle hvac [on|off|toggle|auto|cool|heat|mode <auto|cool|heat>|fan <auto|1|2|3>|temp <temperature>|status|link|unlink|remote]");
+        return true;
+    }
+
+    /**
+     * /vehicle hvac link|unlink|remote - for the vehicle you are sitting in or holding.
+     */
+    private boolean executeDashboard(String action) {
+        String license = HvacManager.getLicenseOf(player);
+        if (license == null) {
+            final ItemStack held = player.getInventory().getItemInMainHand();
+            if (held != null && held.hasItemMeta() && new NBTItem(held).hasKey("mtvehicles.kenteken")) license = VehicleUtils.getLicensePlate(held);
+        }
+        if (license == null || !HvacManager.appliesTo(license)) {
+            sendMessage("&cSit in a vehicle with a climate control (or hold its item) first.");
+            return true;
+        }
+
+        if (action.equals("remote")) {
+            if (HvacManager.isLinked(license)) {
+                final Map<String, Object> result = CarClimateApi.setEnabled(player.getUniqueId(), license, true);
+                sendMessage((Boolean.TRUE.equals(result.get("ok")) ? "&a" : "&c") + result.get("message"));
+            } else {
+                sendMessage("&cLink the vehicle first: /vehicle hvac link");
+            }
+            return true;
+        }
+
+        final boolean link = action.equals("link");
+        final Map<String, Object> result = CarClimateApi.link(player.getUniqueId(), license, link);
+        if (!Boolean.TRUE.equals(result.get("ok"))) {
+            sendMessage("&c" + result.get("message"));
+            return true;
+        }
+        if (link) {
+            sendMessage("&aThe climate control of &f" + license + "&a is linked. A dashboard like EZStats can show and control it now"
+                    + " (in EZStats: sit in the vehicle and use &f/ezstats own&a).");
+        } else {
+            sendMessage("&aThe climate control of &f" + license + "&a is not linked anymore.");
+        }
         return true;
     }
 }

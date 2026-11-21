@@ -395,7 +395,11 @@ public class VehicleDataConfig extends MTVConfig {
         HVAC_ON("hvacOn"),
         HVAC_MODE("hvacMode"),
         HVAC_FAN("hvacFan"),
-        HVAC_TARGET("hvacTarget");
+        HVAC_TARGET("hvacTarget"),
+        /**
+         * Whether the climate control is linked to an external dashboard (EZStats) - see CarClimateApi
+         */
+        HVAC_LINKED("hvacLinked");
 
         final private String path;
 

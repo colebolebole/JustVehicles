@@ -385,7 +385,8 @@ public class DefaultConfig extends MTVConfig {
         HVAC_DEFAULT_TARGET("hvac.defaultTarget", 70.0),
         HVAC_MIN_TARGET("hvac.minTarget", 60.0),
         HVAC_MAX_TARGET("hvac.maxTarget", 85.0),
-        HVAC_FUEL_USAGE("hvac.fuelUsage", 0.02);
+        HVAC_FUEL_USAGE("hvac.fuelUsage", 0.02),
+        HVAC_REMOTE_START_MINUTES("hvac.remoteStartMinutes", 10);
 
         final private String path;
         final private Object defaultValue;

@@ -244,3 +244,8 @@ hvac:
 
   # Extra fuel (in % per second, at fan level 2) used while the A/C or heater is working. 0 = no extra fuel.
   fuelUsage: 0.02
+
+  # A vehicle whose climate control is linked to a dashboard (/vehicle hvac link, see docs/car-climate-api.md - for example EZStats)
+  # can be started from there while nobody sits in it: the climate control then runs for this many minutes (using fuel),
+  # so the vehicle is comfortable when its owner gets in. 0 = switching on from a dashboard only changes the setting.
+  remoteStartMinutes: 10
