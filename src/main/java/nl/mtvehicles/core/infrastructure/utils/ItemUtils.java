@@ -153,11 +153,22 @@ public class ItemUtils {
         Object skinItem = ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.SKIN_ITEM);
         Material material = null;
         if (skinItem != null) material = getMaterial(skinItem.toString());
-        if (material == null) {
-            Main.logWarning("Vehicle with license plate '" + licensePlate + "' has a missing or invalid skinItem in vehicleData.yml. Skipping it.");
+        if (material == null && WARNED_INCOMPLETE.add(licensePlate)) { // (once per vehicle - menus ask for every vehicle each time they are opened)
+            final List<String> present = new ArrayList<>();
+            for (VehicleDataConfig.Option option : VehicleDataConfig.Option.values()) {
+                if (ConfigModule.vehicleDataConfig.get(licensePlate, option) != null) present.add(option.getPath());
+            }
+            Main.logWarning("Vehicle with license plate '" + licensePlate + "' has a "
+                    + (skinItem == null ? "missing skinItem" : "skinItem which is not a material ('" + skinItem + "')")
+                    + " in vehicleData.yml, so it is skipped in menus (it can't be restored or shown). "
+                    + "Its data only has: " + (present.isEmpty() ? "nothing" : String.join(", ", present)) + ". "
+                    + "It is leftover data of a vehicle which was deleted or never fully created - you can remove 'vehicle." + licensePlate + "' from vehicleData.yml while the server is stopped. "
+                    + "(Shown once per vehicle until the next restart.)");
         }
         return material;
     }
+
+    private static final Set<String> WARNED_INCOMPLETE = new HashSet<>();
 
     private static int getStoredInt(String licensePlate, VehicleDataConfig.Option option){
         Object value = ConfigModule.vehicleDataConfig.get(licensePlate, option);
