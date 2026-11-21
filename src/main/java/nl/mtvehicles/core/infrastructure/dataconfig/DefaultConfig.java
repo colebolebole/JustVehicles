@@ -42,7 +42,21 @@ public class DefaultConfig extends MTVConfig {
      * @return Value of the option (as Object)
      */
     public Object get(Option configOption){
-        return this.getConfiguration().get(configOption.getPath());
+        // Looked up very often (many times per tick for each driven vehicle), so the values are cached until the config is reloaded.
+        Object value = valueCache.get(configOption);
+        if (value == null) {
+            value = this.getConfiguration().get(configOption.getPath());
+            if (value != null) valueCache.put(configOption, value);
+        }
+        return value;
+    }
+
+    private final Map<Option, Object> valueCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    @Override
+    public void reload() {
+        super.reload();
+        valueCache.clear();
     }
 
     /**

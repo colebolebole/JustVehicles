@@ -350,19 +350,25 @@ public class PacketHandler {
      * @param object Checked object (likely a packet)
      * @return True if the given object is an instance of the steering packet (PacketPlayInSteerVehicle).
      */
+    private static volatile Class<?> cachedSteeringPacketClass;
+
     @VersionSpecific
     public static boolean isObjectPacket(Object object) {
         final String errorMessage = "An unexpected error occurred (given object is not a valid steering packet). Try reinstalling the plugin or contact the developer: https://discord.gg/vehicle";
 
         try {
-            Class<?> steeringPacketClass;
-            if (getServerVersion().isOlderThan(ServerVersion.v1_17_R1)) {
-                String version = getServerVersion().name();
-                steeringPacketClass = Class.forName("net.minecraft.server." + version + ".PacketPlayInSteerVehicle");
-            } else if (getServerVersion().isOlderThan(ServerVersion.v26_1)) {
-                steeringPacketClass = Class.forName("net.minecraft.network.protocol.game.PacketPlayInSteerVehicle");
-            } else {
-                steeringPacketClass = Class.forName("net.minecraft.network.protocol.game.ServerboundPlayerInputPacket");
+            // This is called every tick for every driven vehicle - the class is looked up only once.
+            Class<?> steeringPacketClass = cachedSteeringPacketClass;
+            if (steeringPacketClass == null) {
+                if (getServerVersion().isOlderThan(ServerVersion.v1_17_R1)) {
+                    String version = getServerVersion().name();
+                    steeringPacketClass = Class.forName("net.minecraft.server." + version + ".PacketPlayInSteerVehicle");
+                } else if (getServerVersion().isOlderThan(ServerVersion.v26_1)) {
+                    steeringPacketClass = Class.forName("net.minecraft.network.protocol.game.PacketPlayInSteerVehicle");
+                } else {
+                    steeringPacketClass = Class.forName("net.minecraft.network.protocol.game.ServerboundPlayerInputPacket");
+                }
+                cachedSteeringPacketClass = steeringPacketClass;
             }
 
             if (!steeringPacketClass.isInstance(object)) {

@@ -17,6 +17,8 @@ import nl.mtvehicles.core.infrastructure.utils.MenuUtils;
 import nl.mtvehicles.core.infrastructure.utils.TextUtils;
 import nl.mtvehicles.core.infrastructure.models.MTVListener;
 import nl.mtvehicles.core.infrastructure.vehicle.Vehicle;
+import nl.mtvehicles.core.infrastructure.vehicle.VehicleData;
+import nl.mtvehicles.core.infrastructure.vehicle.VehicleFinder;
 import nl.mtvehicles.core.infrastructure.vehicle.VehicleUtils;
 import nl.mtvehicles.core.infrastructure.modules.ConfigModule;
 import nl.mtvehicles.core.listeners.VehicleVoucherListener;
@@ -270,7 +272,39 @@ public class InventoryClickListener extends MTVListener {
                 MenuUtils.restoreCMD(player, currentPage - 1, MenuUtils.restoreUUID.get(player));
             return;
         }
-        player.getInventory().addItem(clickedItem);
+        restoreVehicle();
+    }
+
+    /**
+     * Give the clicked vehicle to the player. If the vehicle is still spawned in a world, it is removed from there (so there is no duplicate).
+     */
+    private void restoreVehicle() {
+        final String license = new NBTItem(clickedItem).getString("mtvehicles.kenteken");
+        if (license == null || license.isEmpty()) return;
+
+        if (TextUtils.checkInvFull(player)) {
+            ConfigModule.messagesConfig.sendMessage(player, Message.INVENTORY_FULL);
+            return;
+        }
+
+        // The menu item may contain extra lore (e.g. a note that the vehicle is still spawned), so the player gets a fresh item.
+        final ItemStack item = MenuUtils.getRestoreItem(license);
+        if (item == null) return;
+
+        final VehicleFinder.SpawnedVehicle spawned = VehicleFinder.getSpawned(license);
+        if (spawned != null) {
+            if (spawned.isOccupied()) {
+                player.sendMessage(TextUtils.colorize("&cThis vehicle is being used right now, so it can't be restored."));
+                return;
+            }
+            for (Player trunkViewer : VehicleData.getTrunkViewers(license)) trunkViewer.closeInventory();
+            VehicleFinder.despawn(spawned);
+            player.sendMessage(TextUtils.colorize("&eThe vehicle &f" + license + "&e was still spawned in the world - it has been removed from there."));
+        }
+
+        player.getInventory().addItem(item);
+        // Refresh the menu, so that the note about the spawned vehicle disappears
+        MenuUtils.restoreCMD(player, MenuUtils.restorePage.getOrDefault(player, 1), MenuUtils.restoreUUID.get(player));
     }
 
     private void vehicleEditMenu(){

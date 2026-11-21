@@ -7,6 +7,7 @@ import nl.mtvehicles.core.infrastructure.enums.InventoryTitle;
 import nl.mtvehicles.core.infrastructure.enums.Message;
 import nl.mtvehicles.core.infrastructure.models.MTVConfig;
 import nl.mtvehicles.core.infrastructure.vehicle.Vehicle;
+import nl.mtvehicles.core.infrastructure.vehicle.VehicleFinder;
 import nl.mtvehicles.core.infrastructure.vehicle.VehicleUtils;
 import nl.mtvehicles.core.infrastructure.modules.ConfigModule;
 import nl.mtvehicles.core.listeners.inventory.InventoryClickListener;
@@ -264,6 +265,31 @@ public class MenuUtils {
     }
 
     /**
+     * Get the item of a vehicle (from vehicleData.yml) which is given when it is restored.
+     * @return Null if the vehicle's data is incomplete
+     */
+    public static ItemStack getRestoreItem(String license) {
+        return ConfigModule.vehicleDataConfig.get(license, VehicleDataConfig.Option.NBT_VALUE) == null
+                ? ItemUtils.getVehicleItem(license)
+                : ItemUtils.getVehicleItem(license, true);
+    }
+
+    /**
+     * Add a note to a restore menu item that the vehicle is still spawned in the world (it is removed when restored).
+     * Only for display - the player receives a fresh item, see {@link #getRestoreItem(String)}.
+     */
+    private static void markAsSpawned(ItemStack item) {
+        final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        final List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        lore.add(TextUtils.colorize("&c"));
+        lore.add(TextUtils.colorize("&cStill spawned in the world!"));
+        lore.add(TextUtils.colorize("&7It is removed from the world when restored."));
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+    }
+
+    /**
      * Open /vehicle restore menu to a player
      * @param p Player
      * @param page Page
@@ -271,7 +297,7 @@ public class MenuUtils {
      */
     public static void restoreCMD(Player p, int page, UUID ownerUUID) {
         Inventory inv = Bukkit.createInventory(null, 54, InventoryTitle.VEHICLE_RESTORE_MENU.getStringTitle());
-        ConfigModule.configList.forEach(MTVConfig::reload);
+        // (All config files used to be re-read from disk here on every page change - that is slow with many vehicles, and vehicle data is kept in memory anyway.)
         restorePage.put(p, page);
         if (!ConfigModule.vehicleDataConfig.isEmpty()) {
             VehicleDataConfig data = ConfigModule.vehicleDataConfig;
@@ -284,13 +310,17 @@ public class MenuUtils {
                 }
             }
             dataVehicle.sort(String::compareToIgnoreCase); // stable order between pages (the underlying map is unordered)
+
+            // One scan for all vehicles which are still spawned in the worlds (they are removed when restored)
+            final Set<String> spawned = VehicleFinder.findSpawned(true).keySet();
+
             for (int i = 1 + page * 36 - 36; i <= page * 36; i++) {
                 if (i - 1 < dataVehicle.size()) {
                     String license = dataVehicle.get(i - 1);
-                    ItemStack item = data.get(license, VehicleDataConfig.Option.NBT_VALUE) == null
-                            ? ItemUtils.getVehicleItem(license)
-                            : ItemUtils.getVehicleItem(license, true);
-                    if (item != null) inv.addItem(item); // null = incomplete vehicle data (already logged)
+                    ItemStack item = getRestoreItem(license);
+                    if (item == null) continue; // incomplete vehicle data (already logged)
+                    if (spawned.contains(license)) markAsSpawned(item);
+                    inv.addItem(item);
                 }
             }
             for (int i = 36; i <= 44; i++) {

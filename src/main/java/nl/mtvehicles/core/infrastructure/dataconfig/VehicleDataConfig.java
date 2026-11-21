@@ -58,6 +58,35 @@ public class VehicleDataConfig extends MTVConfig {
             }
         };
         saveTask.runTaskTimer(Main.instance, 20 * 60 * 10, 20 * 60 * 10);
+
+        // Changes are written to disk shortly after they are made - at most once every few seconds, no matter how many changes were made.
+        flushTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (dirty) saveToDisk();
+            }
+        };
+        flushTask.runTaskTimer(Main.instance, FLUSH_INTERVAL_TICKS, FLUSH_INTERVAL_TICKS);
+    }
+
+    private BukkitRunnable flushTask;
+    private static final long FLUSH_INTERVAL_TICKS = 100L; // 5 seconds
+    /**
+     * True if there are changes which have not been written to vehicleData.yml yet.
+     */
+    private volatile boolean dirty = false;
+
+    /**
+     * Mark the vehicle data as changed. The file is written within a few seconds (see {@link #saveToDisk()} to write it immediately).
+     * <p>
+     * (Writing the whole file - and then reading it again - on each little change used to cause lag spikes on servers with many vehicles.)
+     *
+     * @return Always true
+     */
+    @Override
+    public boolean save() {
+        dirty = true;
+        return true;
     }
 
     /**
@@ -68,7 +97,8 @@ public class VehicleDataConfig extends MTVConfig {
         for (Map.Entry<String, ConfigurationSection> entry : vehicleDataInMemory.entrySet()) {
             getConfiguration().set("vehicle." + entry.getKey(), entry.getValue());
         }
-        save();
+        dirty = false;
+        saveWithoutReload();
     }
 
     /**

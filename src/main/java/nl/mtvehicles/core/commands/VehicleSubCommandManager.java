@@ -56,6 +56,8 @@ public class VehicleSubCommandManager extends MTVCommand {
         CommandModule.subcommands.put("givefuel", new VehicleGiveFuel());
         CommandModule.subcommands.put("despawn", new VehicleDespawn());
         CommandModule.subcommands.put("vault", new VehicleVault());
+        CommandModule.subcommands.put("find", new VehicleFind());
+        CommandModule.subcommands.put("finder", new VehicleFind());
     }
 
     @Override

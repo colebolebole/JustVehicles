@@ -171,7 +171,7 @@ public class VehicleMovement {
 
         schedulerRun(() -> {
             standSkin.teleport(new Location(standMain.getLocation().getWorld(), standMain.getLocation().getX(), standMain.getLocation().getY(), standMain.getLocation().getZ(), standMain.getLocation().getYaw(), standMain.getLocation().getPitch()));
-            if (DependencyModule.isDependencyEnabled(SoftDependency.WORLD_GUARD)){
+            if (DependencyModule.isDependencyEnabled(SoftDependency.WORLD_GUARD) && isRegionCheckNeeded(license, standMain.getLocation())){
                 Set<String> newRegions = DependencyModule.worldGuard.getRegionNames(standMain.getLocation());
                 if (VehicleData.lastRegions.containsKey(license)){
                     Set<String> lastRegions = VehicleData.lastRegions.get(license);
@@ -277,6 +277,21 @@ public class VehicleMovement {
             rotation();
             move();
         });
+    }
+
+    /**
+     * Block position of each vehicle at the time of its last WorldGuard region check.
+     */
+    private static final java.util.Map<String, Long> lastRegionCheckPosition = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Region lookups are expensive and run every tick for every driven vehicle, but the regions only change when the vehicle enters another block.
+     * @return True if the regions of the vehicle's location must be checked (again)
+     */
+    private static boolean isRegionCheckNeeded(String license, Location loc) {
+        final long position = ((long) loc.getBlockX() & 0x3FFFFFFL) << 38 | ((long) loc.getBlockZ() & 0x3FFFFFFL) << 12 | ((long) loc.getBlockY() & 0xFFFL);
+        final Long last = lastRegionCheckPosition.put(license, position);
+        return last == null || last != position || !VehicleData.lastRegions.containsKey(license);
     }
 
     /**
@@ -695,20 +710,41 @@ public class VehicleMovement {
     @VersionSpecific
     protected void teleportSeat(ArmorStand seat, Location loc){
         try {
-            ServerVersion version = getServerVersion();
-            String craftEntityClassName = "org.bukkit.craftbukkit." + version.name() + ".entity.CraftEntity";
-            if(version.isNewerOrEqualTo(ServerVersion.v26_1)) {
-                craftEntityClassName = "org.bukkit.craftbukkit.entity.CraftEntity";
+            // The reflection lookups are done only once (this method runs every tick for every seat of every driven vehicle).
+            Method getHandleMethod = craftGetHandle;
+            if (getHandleMethod == null) {
+                ServerVersion version = getServerVersion();
+                String craftEntityClassName = "org.bukkit.craftbukkit." + version.name() + ".entity.CraftEntity";
+                if(version.isNewerOrEqualTo(ServerVersion.v26_1)) {
+                    craftEntityClassName = "org.bukkit.craftbukkit.entity.CraftEntity";
+                }
+                Class<?> craftEntityClass = Class.forName(craftEntityClassName);
+                getHandleMethod = craftEntityClass.getMethod("getHandle");
+                craftGetHandle = getHandleMethod;
             }
-            Class<?> craftEntityClass = Class.forName(craftEntityClassName);
-
-            Method getHandleMethod = craftEntityClass.getMethod("getHandle");
             Object handle = getHandleMethod.invoke(seat);
-            
+
             teleportSeat(handle, loc.getX(), loc.getY(), loc.getZ(), loc.getYaw(), loc.getPitch());
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Cached reflection lookups for {@link #teleportSeat(ArmorStand, Location)} (the methods never change while the server is running).
+     */
+    private static volatile Method craftGetHandle;
+    private static volatile Method seatTeleportMethod;
+    private static volatile Class<?> seatTeleportMethodFor;
+
+    private static Method getSeatTeleportMethod(Class<?> handleClass) throws NoSuchMethodException {
+        Method method = seatTeleportMethod;
+        if (method == null || seatTeleportMethodFor != handleClass) {
+            method = handleClass.getSuperclass().getSuperclass().getDeclaredMethod(getTeleportMethod(), double.class, double.class, double.class, float.class, float.class);
+            seatTeleportMethod = method;
+            seatTeleportMethodFor = handleClass;
+        }
+        return method;
     }
     /**
      * Get the String name of the method for teleporting an ArmorStand. Changes between versions.
@@ -733,8 +769,7 @@ public class VehicleMovement {
     protected void teleportSeat(Object seat, double x, double y, double z, float yaw, float pitch){
         schedulerRun(() -> {
             try {
-                Method method = seat.getClass().getSuperclass().getSuperclass().getDeclaredMethod(getTeleportMethod(), double.class, double.class, double.class, float.class, float.class);
-                method.invoke(seat, x, y, z, yaw, pitch);
+                getSeatTeleportMethod(seat.getClass()).invoke(seat, x, y, z, yaw, pitch);
             } catch (Exception e) {
                 e.printStackTrace();
             }

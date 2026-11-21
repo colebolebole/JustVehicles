@@ -1067,7 +1067,7 @@ public final class VehicleUtils {
         if ((boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.FUEL_ENABLED) && (boolean) ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.FUEL_ENABLED)) {
             double fuel = VehicleData.fuel.get(licensePlate);
             ConfigModule.vehicleDataConfig.set(licensePlate, VehicleDataConfig.Option.FUEL, fuel);
-            ConfigModule.vehicleDataConfig.saveToDisk();
+            ConfigModule.vehicleDataConfig.save(); // written to disk within a few seconds (a full write on every exit used to lag)
         }
 
         return true;

@@ -101,6 +101,23 @@ public abstract class MTVConfig {
     }
 
     /**
+     * Write the configuration to the file, <b>without</b> reloading it afterwards (see {@link #save()}, which re-reads the whole file).
+     * @return True if saving was successful
+     */
+    protected boolean saveWithoutReload() {
+        if (config == null || configFile == null) {
+            return false;
+        }
+        try {
+            config.save(configFile);
+            return true;
+        } catch (IOException ex) {
+            Main.instance.getLogger().log(Level.SEVERE, "Could not save config to " + configFile, ex);
+            return false;
+        }
+    }
+
+    /**
      * Save the default configuration file
      */
     public void saveDefaultConfig() {

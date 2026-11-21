@@ -6,6 +6,7 @@ import nl.mtvehicles.core.Main;
 import nl.mtvehicles.core.listeners.*;
 import nl.mtvehicles.core.listeners.inventory.InventoryClickListener;
 import nl.mtvehicles.core.listeners.inventory.InventoryCloseListener;
+import nl.mtvehicles.core.listeners.inventory.VehicleFinderListener;
 
 /**
  * Module which registers all listeners used by the plugin
@@ -26,6 +27,7 @@ public class ListenersModule {
         Main.instance.registerListener(new JoinListener());
         Main.instance.registerListener(new VehicleVoucherListener());
         Main.instance.registerListener(new InventoryCloseListener());
+        Main.instance.registerListener(new VehicleFinderListener());
         Main.instance.registerListener(new JerryCanClickListener());
         Main.instance.registerListener(new TNTSpawnListener());
         Main.instance.registerListener(new LeaveListener());

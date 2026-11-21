@@ -23,6 +23,19 @@ public class BossBarUtils {
     public static HashMap<String, BossBar> Fuelbar = new HashMap<>();
 
     /**
+     * Last displayed percentage of each bossbar. Updating a bossbar sends a packet to its viewers,
+     * and {@link #setBossBarValue(double, String)} is called every tick for each driven vehicle - so only changes are sent.
+     */
+    private static final HashMap<String, Integer> lastPercent = new HashMap<>();
+    private static final HashMap<String, BarColor> lastColor = new HashMap<>();
+
+    private static BarColor getColor(double fuel) {
+        if (fuel < 30) return BarColor.RED;
+        if (fuel < 60) return BarColor.YELLOW;
+        return BarColor.GREEN;
+    }
+
+    /**
      * Set bossbar's fuel amount
      * @param counter Fuel amount
      * @param licensePlate Vehicle's license plate (this vehicle's fuel is displayed)
@@ -30,23 +43,26 @@ public class BossBarUtils {
     public static void setBossBarValue(double counter, String licensePlate) {
         if ((boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.FUEL_ENABLED) && (boolean) ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.FUEL_ENABLED)) {
 
-            if (!Fuelbar.containsKey(licensePlate)) return;
+            final BossBar bar = Fuelbar.get(licensePlate);
+            if (bar == null) return;
 
-            Fuelbar.get(licensePlate).setProgress(counter);
-            Fuelbar.get(licensePlate).setTitle(Math.round(counter * 100.0D) + "% " + TextUtils.colorize(ConfigModule.messagesConfig.getMessage(Message.BOSSBAR_FUEL)));
+            counter = Math.max(0.0, Math.min(1.0, counter)); // setProgress() throws an exception for values outside of 0-1
 
-            Double fuel = VehicleData.fuel.get(licensePlate);
-
-            if (fuel < 30) {
-                Fuelbar.get(licensePlate).setColor(BarColor.RED);
-                return;
+            final int percent = (int) Math.round(counter * 100.0D);
+            final Integer previousPercent = lastPercent.get(licensePlate);
+            if (previousPercent == null || previousPercent != percent) {
+                bar.setProgress(counter);
+                bar.setTitle(percent + "% " + TextUtils.colorize(ConfigModule.messagesConfig.getMessage(Message.BOSSBAR_FUEL)));
+                lastPercent.put(licensePlate, percent);
             }
-            if (fuel < 60) {
-                Fuelbar.get(licensePlate).setColor(BarColor.YELLOW);
-                return;
-            }
-            if (fuel < 100) {
-                Fuelbar.get(licensePlate).setColor(BarColor.GREEN);
+
+            final Double fuel = VehicleData.fuel.get(licensePlate);
+            if (fuel == null || fuel >= 100) return;
+
+            final BarColor color = getColor(fuel);
+            if (lastColor.get(licensePlate) != color) {
+                bar.setColor(color);
+                lastColor.put(licensePlate, color);
             }
         }
     }
@@ -58,7 +74,14 @@ public class BossBarUtils {
      */
     public static void removeBossBar(Player player, String licensePlate) {
         if ((boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.FUEL_ENABLED) && (boolean) ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.FUEL_ENABLED)) {
-            Fuelbar.get(licensePlate).removePlayer(player);
+            final BossBar bar = Fuelbar.get(licensePlate);
+            if (bar == null) return;
+            bar.removePlayer(player);
+            if (bar.getPlayers().isEmpty()) { // nobody sees it anymore - don't keep it in memory
+                Fuelbar.remove(licensePlate);
+                lastPercent.remove(licensePlate);
+                lastColor.remove(licensePlate);
+            }
         }
     }
 
@@ -69,20 +92,14 @@ public class BossBarUtils {
      */
     public static void addBossBar(Player player, String licensePlate) {
         if ((boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.FUEL_ENABLED) && (boolean) ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.FUEL_ENABLED)) {
-            double fuel = (double) ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.FUEL);
-            String fuelString = String.valueOf(fuel);
-            BossBar bar = Bukkit.createBossBar(Math.round(Double.parseDouble(fuelString)) + "% " + TextUtils.colorize(ConfigModule.messagesConfig.getMessage(Message.BOSSBAR_FUEL)), BarColor.GREEN, BarStyle.SOLID);
+            Object fuelValue = ConfigModule.vehicleDataConfig.get(licensePlate, VehicleDataConfig.Option.FUEL);
+            double fuel = fuelValue instanceof Number ? ((Number) fuelValue).doubleValue() : 0.0;
+            final BarColor color = getColor(fuel); // (the colours used to be overwritten, so the bar was always green)
+            BossBar bar = Bukkit.createBossBar(Math.round(fuel) + "% " + TextUtils.colorize(ConfigModule.messagesConfig.getMessage(Message.BOSSBAR_FUEL)), color, BarStyle.SOLID);
             Fuelbar.put(licensePlate, bar);
-            if (fuel < 30) {
-                Fuelbar.get(licensePlate).setColor(BarColor.RED);
-            }
-            if (fuel < 60) {
-                Fuelbar.get(licensePlate).setColor(BarColor.YELLOW);
-            }
-            if (fuel < 100) {
-                Fuelbar.get(licensePlate).setColor(BarColor.GREEN);
-            }
-            Fuelbar.get(licensePlate).addPlayer(player);
+            lastPercent.remove(licensePlate);
+            lastColor.put(licensePlate, color);
+            bar.addPlayer(player);
         }
     }
 }
