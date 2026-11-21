@@ -52,7 +52,7 @@ public final class HvacMenu {
         if (climate == null) return false;
 
         final Holder holder = new Holder();
-        final Inventory inv = Bukkit.createInventory(holder, 27, TextUtils.colorize("&8Climate control"));
+        final Inventory inv = Bukkit.createInventory(holder, 27, TextUtils.colorize("&8" + shorten(climate.getDisplayName(), 30)));
         holder.inventory = inv;
         render(inv, climate);
         player.openInventory(inv);
@@ -67,7 +67,7 @@ public final class HvacMenu {
             inv.setItem(i, ItemUtils.getMenuItem(ItemUtils.getStainedGlassPane(), 1, "&c", "&c"));
         }
 
-        inv.setItem(SLOT_INFO, ItemUtils.getMenuItem("COMPASS", "COMPASS", (short) 0, 1, "&6Climate control", infoLore(climate)));
+        inv.setItem(SLOT_INFO, ItemUtils.getMenuItem("COMPASS", "COMPASS", (short) 0, 1, "&6" + climate.getDisplayName(), infoLore(climate)));
 
         inv.setItem(SLOT_POWER, climate.isOn()
                 ? ItemUtils.getMenuItem("LIME_WOOL", "WOOL", (short) 5, 1, "&aClimate control: ON", Arrays.asList("&7Click to turn it off"))
@@ -89,6 +89,11 @@ public final class HvacMenu {
                 Arrays.asList("&7Click: +1 degree", "&7Shift-click: +5 degrees")));
 
         inv.setItem(SLOT_CLOSE, MenuUtils.getCloseItem());
+    }
+
+    /** Titles of inventories are limited to 32 characters on older versions. */
+    private static String shorten(String text, int max) {
+        return text.length() <= max ? text : text.substring(0, max);
     }
 
     private static List<String> infoLore(HvacManager.Climate climate) {

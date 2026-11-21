@@ -42,7 +42,8 @@ public class VehicleHvac extends MTVSubCommand {
             return true;
         }
 
-        if (arguments.length >= 2 && (arguments[1].equalsIgnoreCase("link") || arguments[1].equalsIgnoreCase("unlink") || arguments[1].equalsIgnoreCase("remote"))) {
+        if (arguments.length >= 2 && (arguments[1].equalsIgnoreCase("link") || arguments[1].equalsIgnoreCase("unlink") || arguments[1].equalsIgnoreCase("remote")
+                || arguments[1].equalsIgnoreCase("rename") || arguments[1].equalsIgnoreCase("name"))) {
             return executeDashboard(arguments[1].toLowerCase(Locale.ROOT));
         }
 
@@ -119,7 +120,7 @@ public class VehicleHvac extends MTVSubCommand {
                 return true;
             case "status":
             case "info":
-                sendMessage("&6Climate control: &f" + (climate.isOn() ? "on" : "off") + "&7, mode &f" + climate.getMode().getDisplayName()
+                sendMessage("&6" + climate.getDisplayName() + ": &f" + (climate.isOn() ? "on" : "off") + "&7, mode &f" + climate.getMode().getDisplayName()
                         + "&7, fan &f" + climate.getFanText() + "&7, " + climate.getStatus());
                 sendMessage("&7Inside: &f" + HvacManager.format(climate.getCabinF()) + "&7, target: &f" + HvacManager.format(climate.getTargetF())
                         + "&7, outside: &f" + HvacManager.format(climate.getAmbientF()));
@@ -128,7 +129,7 @@ public class VehicleHvac extends MTVSubCommand {
                 break;
         }
 
-        sendMessage("&cUsage: /vehicle hvac [on|off|toggle|auto|cool|heat|mode <auto|cool|heat>|fan <auto|1|2|3>|temp <temperature>|status|link|unlink|remote]");
+        sendMessage("&cUsage: /vehicle hvac [on|off|toggle|auto|cool|heat|mode <auto|cool|heat>|fan <auto|1|2|3>|temp <temperature>|status|rename <name>|link|unlink|remote]");
         return true;
     }
 
@@ -143,6 +144,26 @@ public class VehicleHvac extends MTVSubCommand {
         }
         if (license == null || !HvacManager.appliesTo(license)) {
             sendMessage("&cSit in a vehicle with a climate control (or hold its item) first.");
+            return true;
+        }
+
+        if (action.equals("rename") || action.equals("name")) {
+            // /vehicle hvac rename <name> - with no name, the name is removed
+            final String requested = arguments.length >= 3 ? String.join(" ", java.util.Arrays.copyOfRange(arguments, 2, arguments.length)) : "";
+            final boolean isOwner = player.getUniqueId().equals(CarClimateApi.ownerOf(license));
+            if (!isOwner && !player.hasPermission("mtvehicles.admin")) {
+                sendMessage("&cOnly the owner of the vehicle can rename its climate control.");
+                return true;
+            }
+            final String cleaned = HvacManager.cleanName(requested);
+            if (cleaned == null) {
+                sendMessage("&cThat name is too long (at most " + HvacManager.MAX_NAME_LENGTH + " characters).");
+                return true;
+            }
+            HvacManager.setName(HvacManager.getForControl(license), cleaned);
+            sendMessage(cleaned.isEmpty()
+                    ? "&aThe climate control of &f" + license + "&a has no name anymore."
+                    : "&aThe climate control of &f" + license + "&a is now called &f" + cleaned + "&a.");
             return true;
         }
 

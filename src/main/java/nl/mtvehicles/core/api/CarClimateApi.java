@@ -95,7 +95,7 @@ public final class CarClimateApi {
     /**
      * Describe a vehicle's climate control. Keys (absent when unknown):
      * <pre>
-     * license, name, owner (UUID as text), linked (boolean),
+     * license, name (the vehicle's name), hvacName (the climate control's own name, if it has one), owner (UUID as text), linked (boolean),
      * on (boolean), mode ("auto", "cool" or "heat"), fan ("auto", "1", "2" or "3"), targetF, minTargetF, maxTargetF,
      * status ("off", "idle", "cooling" or "heating"), running (boolean),
      * cabinF, ambientF (only while the vehicle has been driven or started remotely recently),
@@ -113,6 +113,7 @@ public final class CarClimateApi {
         map.put("license", license);
         final Object name = ConfigModule.vehicleDataConfig.get(license, VehicleDataConfig.Option.NAME);
         if (name != null) map.put("name", name.toString());
+        if (!climate.getName().isEmpty()) map.put("hvacName", climate.getName());
         final UUID owner = VehicleFinder.getOwner(license);
         if (owner != null) map.put("owner", owner.toString());
         map.put("linked", climate.isLinked());
@@ -231,6 +232,19 @@ public final class CarClimateApi {
         }
         HvacManager.setFan(HvacManager.getForControl(license), level);
         return result(true, 200, "Done.", false);
+    }
+
+    /**
+     * Give the climate control a name ("" or null removes it). Only the owner may. At most 32 characters; colour codes are removed.
+     */
+    public static Map<String, Object> setName(UUID actor, String license, @Nullable String name) {
+        if (!HvacManager.appliesTo(license)) return result(false, 404, "That vehicle has no climate control.", false);
+        if (!actor.equals(VehicleFinder.getOwner(license))) return result(false, 403, "That vehicle isn't yours.", false);
+
+        final String cleaned = HvacManager.cleanName(name == null ? "" : name);
+        if (cleaned == null) return result(false, 400, "That name is too long (at most " + HvacManager.MAX_NAME_LENGTH + " characters).", false);
+        HvacManager.setName(HvacManager.getForControl(license), cleaned);
+        return result(true, 200, cleaned.isEmpty() ? "The name was removed." : "Renamed.", false);
     }
 
     // --- Helpers ---

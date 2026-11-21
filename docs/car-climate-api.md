@@ -1,6 +1,6 @@
 # Car climate API
 
-MTVehicles gives every vehicle (by default: cars) a climate control - see the `hvac` section of `config.yml`.
+MTVehicles gives every vehicle a climate control (cars, boats, aircraft... except the types in `hvac.excludedVehicleTypes`) - see the `hvac` section of `config.yml`.
 Dashboards such as [EZStats](https://github.com/colebolebole/EZStats) can show and control it through
 `nl.mtvehicles.core.api.CarClimateApi`.
 
@@ -37,7 +37,7 @@ given the UUID of the player who acts and checks it against the owner.
 
 | Key | |
 | --- | --- |
-| `license`, `name`, `owner`, `linked` | The vehicle, its owner (UUID as text), and whether it is linked. |
+| `license`, `name`, `hvacName`, `owner`, `linked` | The vehicle and its name, the climate control's own name (`/vehicle hvac rename`; absent if it has none), its owner (UUID as text), and whether it is linked. |
 | `on`, `mode`, `fan` | The setting: on/off, `auto` / `cool` / `heat`, and `auto` / `1` / `2` / `3`. |
 | `targetF`, `minTargetF`, `maxTargetF` | The target temperature and the range it can be set in. |
 | `status`, `running` | `off`, `idle`, `cooling` or `heating`, and whether it is working right now. |
@@ -58,5 +58,6 @@ Each returns a **result** map: `ok` (`Boolean`), `status` (`Integer`, an HTTP st
 | `setTargetF(UUID actor, String license, double targetF)` | Sets the target, kept within the range (`adjusted` is then `true`). |
 | `setMode(UUID actor, String license, String mode)` | `auto`, `cool` or `heat`. |
 | `setFan(UUID actor, String license, String fan)` | `auto`, `1`, `2` or `3`. |
+| `setName(UUID actor, String license, String name)` | Gives the climate control a name (at most 32 characters, colour codes removed; `""` or `null` removes it). Owner only; works without linking. |
 
 Changing a vehicle which is not spawned (or whose chunk is not loaded) only saves the setting; it takes effect when somebody gets in.

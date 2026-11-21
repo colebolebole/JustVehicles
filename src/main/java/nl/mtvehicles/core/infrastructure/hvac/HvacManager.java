@@ -87,6 +87,7 @@ public final class HvacManager {
         private double targetF;
         private boolean running;  // the A/C or heater is working right now
         private boolean cooling;  // (if running) cooling, otherwise heating
+        private String name = ""; // the climate control's own name (/vehicle hvac rename), "" = not named
         private boolean linked;   // linked to a dashboard (see CarClimateApi)
         private long remoteUntil; // started remotely: runs without a driver until this time (millis), 0 = not
         private Entity remoteRef; // armor stand of the vehicle which is running remotely
@@ -106,6 +107,10 @@ public final class HvacManager {
         public boolean isRunning() { return running; }
         public boolean isCooling() { return cooling; }
         public boolean isLinked() { return linked; }
+        /** The name given with /vehicle hvac rename, "" if it has none. */
+        public String getName() { return name; }
+        /** The name to show: its own name, or "Climate control". */
+        public String getDisplayName() { return name.isEmpty() ? "Climate control" : name; }
         public boolean isRemoteRunning() { return remoteUntil > System.currentTimeMillis(); }
         public long getRemoteUntil() { return remoteUntil; }
 
@@ -180,22 +185,23 @@ public final class HvacManager {
     }
 
     /**
-     * Whether a vehicle has a climate control (by its type).
+     * Whether a vehicle has a climate control: every vehicle has, except those of the types in 'hvac.excludedVehicleTypes'.
      */
     public static boolean appliesTo(String license) {
         if (!isEnabled() || license == null || !VehicleUtils.existsByLicensePlate(license)) return false;
         try {
             final VehicleType type = ConfigModule.vehicleDataConfig.getType(license);
-            final Object types = config(DefaultConfig.Option.HVAC_VEHICLE_TYPES);
-            if (types instanceof List) {
-                for (Object t : (List<?>) types) {
-                    if (t != null && t.toString().equalsIgnoreCase(type.name())) return true;
+            final Object excluded = config(DefaultConfig.Option.HVAC_EXCLUDED_TYPES);
+            if (excluded instanceof List) {
+                for (Object t : (List<?>) excluded) {
+                    if (t != null && t.toString().equalsIgnoreCase(type.name())) return false;
                 }
             }
+            return true;
         } catch (Exception ignored) {
             // malformed vehicle data
+            return false;
         }
-        return false;
     }
 
     public static double getMinTargetF() {
@@ -311,6 +317,36 @@ public final class HvacManager {
         climate.targetF = clampTarget(target instanceof Number ? ((Number) target).doubleValue() : getDefaultTargetF());
 
         climate.linked = isLinked(climate.license);
+
+        final Object name = data.get(climate.license, VehicleDataConfig.Option.HVAC_NAME);
+        climate.name = name != null ? name.toString() : "";
+    }
+
+    // --- Name ---
+
+    /** The longest name a climate control can have. */
+    public static final int MAX_NAME_LENGTH = 32;
+
+    /**
+     * Clean up a name for a climate control: colour codes and control characters are removed, runs of spaces become one,
+     * and it is trimmed.
+     * @return The name, or null if it is too long (more than {@link #MAX_NAME_LENGTH} characters)
+     */
+    public static @Nullable String cleanName(String name) {
+        final String cleaned = name
+                .replaceAll("(?i)[&§][0-9A-FK-OR]", "")
+                .replaceAll("[\\p{Cntrl}]", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return cleaned.length() > MAX_NAME_LENGTH ? null : cleaned;
+    }
+
+    /**
+     * Give the climate control a name ("" removes it). The name is cleaned with {@link #cleanName(String)} - check its result first.
+     */
+    public static void setName(Climate climate, String cleanedName) {
+        climate.name = cleanedName;
+        saveSettings(climate);
     }
 
     // --- Linking to a dashboard (see CarClimateApi) ---
@@ -432,6 +468,7 @@ public final class HvacManager {
         data.set(climate.license, VehicleDataConfig.Option.HVAC_MODE, climate.mode.name());
         data.set(climate.license, VehicleDataConfig.Option.HVAC_FAN, climate.fan);
         data.set(climate.license, VehicleDataConfig.Option.HVAC_TARGET, climate.targetF);
+        data.set(climate.license, VehicleDataConfig.Option.HVAC_NAME, climate.name.isEmpty() ? null : climate.name);
         data.save();
     }
 

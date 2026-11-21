@@ -220,9 +220,13 @@ slipperyIce: false
 hvac:
   enabled: true
 
-  # Which vehicle types have a climate control. Available: CAR, HOVER, TANK, HELICOPTER, AIRPLANE, BOAT.
-  vehicleTypes:
-    - CAR
+  # Every vehicle has a climate control, except the vehicle types in this list. Available: CAR, HOVER, TANK, HELICOPTER, AIRPLANE, BOAT.
+  # For example, to take it off boats and hoverboards:
+  #  excludedVehicleTypes:
+  #    - BOAT
+  #    - HOVER
+  # (Older versions had a 'vehicleTypes' list here, with the types that had one. It is not used anymore.)
+  excludedVehicleTypes: []
 
   # Where the cabin temperature is shown to the occupants:
   #  AUTO      - on EZvac's HUD if EZvac is installed, otherwise on the action bar
