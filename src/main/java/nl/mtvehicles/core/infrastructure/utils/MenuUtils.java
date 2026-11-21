@@ -275,6 +275,37 @@ public class MenuUtils {
     }
 
     /**
+     * Permission to delete vehicles in the restore menu (the same as for /vehicle delete).
+     */
+    public static final String PERMISSION_DELETE = "mtvehicles.delete";
+
+    /**
+     * Add a line to a restore menu item saying how to delete the vehicle (display only).
+     */
+    private static void addDeleteHint(ItemStack item) {
+        final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        final List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        lore.add(TextUtils.colorize("&c"));
+        lore.add(TextUtils.colorize("&eClick: &7restore the vehicle"));
+        lore.add(TextUtils.colorize("&cShift + right-click: &7delete the vehicle"));
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+    }
+
+    /**
+     * Item for a vehicle whose data is incomplete (it can't be restored). It can only be deleted.
+     */
+    private static ItemStack getBrokenItem(String license) {
+        final ItemStack item = ItemUtils.getMenuItem(Material.BARRIER, 1, "&c" + license,
+                "&7Incomplete vehicle data - it can't be restored.",
+                "&cShift + right-click: &7delete it");
+        final NBTItem nbt = new NBTItem(item);
+        nbt.setString("mtvehicles.kenteken", license);
+        return nbt.getItem();
+    }
+
+    /**
      * Add a note to a restore menu item that the vehicle is still spawned in the world (it is removed when restored).
      * Only for display - the player receives a fresh item, see {@link #getRestoreItem(String)}.
      */
@@ -299,6 +330,7 @@ public class MenuUtils {
         Inventory inv = Bukkit.createInventory(null, 54, InventoryTitle.VEHICLE_RESTORE_MENU.getStringTitle());
         // (All config files used to be re-read from disk here on every page change - that is slow with many vehicles, and vehicle data is kept in memory anyway.)
         restorePage.put(p, page);
+        final boolean canDelete = p.hasPermission(PERMISSION_DELETE);
         if (!ConfigModule.vehicleDataConfig.isEmpty()) {
             VehicleDataConfig data = ConfigModule.vehicleDataConfig;
             // Filter by owner first, then paginate - otherwise pages would contain a random number of the owner's vehicles.
@@ -318,8 +350,13 @@ public class MenuUtils {
                 if (i - 1 < dataVehicle.size()) {
                     String license = dataVehicle.get(i - 1);
                     ItemStack item = getRestoreItem(license);
-                    if (item == null) continue; // incomplete vehicle data (already logged)
+                    if (item == null) {
+                        // Incomplete vehicle data (already logged): it can't be restored, but it can be deleted
+                        if (canDelete) inv.addItem(getBrokenItem(license));
+                        continue;
+                    }
                     if (spawned.contains(license)) markAsSpawned(item);
+                    if (canDelete) addDeleteHint(item);
                     inv.addItem(item);
                 }
             }

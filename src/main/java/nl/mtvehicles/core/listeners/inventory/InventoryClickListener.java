@@ -50,7 +50,11 @@ public class InventoryClickListener extends MTVListener {
 
     private ItemStack clickedItem;
     private int clickedSlot;
+    private org.bukkit.event.inventory.ClickType clickType;
     private InventoryTitle title;
+
+    /** Vehicle a player has asked to delete in the restore menu (needs a second click to be sure): license plate and the time it expires. */
+    private final Map<UUID, Map.Entry<String, Long>> pendingDeletes = new HashMap<>();
 
     @EventHandler
     public void onClick(org.bukkit.event.inventory.InventoryClickEvent event) {
@@ -62,6 +66,7 @@ public class InventoryClickListener extends MTVListener {
 
         clickedItem = event.getCurrentItem();
         clickedSlot = event.getRawSlot();
+        clickType = event.getClick();
         player = (Player) event.getWhoClicked();
 
         if (InventoryTitle.getByStringTitle(stringTitle) == null) return;
@@ -272,7 +277,52 @@ public class InventoryClickListener extends MTVListener {
                 MenuUtils.restoreCMD(player, currentPage - 1, MenuUtils.restoreUUID.get(player));
             return;
         }
-        restoreVehicle();
+        if (clickType == org.bukkit.event.inventory.ClickType.SHIFT_RIGHT) deleteFromRestoreMenu();
+        else restoreVehicle();
+    }
+
+    /**
+     * Delete the clicked vehicle from the database (vehicleData.yml), as /vehicle delete does, and remove it from the world if it is spawned.
+     * It has to be confirmed by clicking it again within 10 seconds.
+     */
+    private void deleteFromRestoreMenu() {
+        final String license = new NBTItem(clickedItem).getString("mtvehicles.kenteken");
+        if (license == null || license.isEmpty()) return;
+
+        if (!player.hasPermission(MenuUtils.PERMISSION_DELETE)) {
+            ConfigModule.messagesConfig.sendMessage(player, Message.NO_PERMISSION);
+            return;
+        }
+
+        final long now = System.currentTimeMillis();
+        final Map.Entry<String, Long> pending = pendingDeletes.get(player.getUniqueId());
+        if (pending == null || !pending.getKey().equals(license) || pending.getValue() < now) {
+            pendingDeletes.put(player.getUniqueId(), new java.util.AbstractMap.SimpleEntry<>(license, now + 10_000L));
+            player.sendMessage(TextUtils.colorize("&cDelete the vehicle &f" + license + "&c for good? Shift + right-click it again within 10 seconds to confirm."));
+            return;
+        }
+        pendingDeletes.remove(player.getUniqueId());
+
+        final VehicleFinder.SpawnedVehicle spawned = VehicleFinder.getSpawned(license);
+        if (spawned != null) {
+            if (spawned.isOccupied()) {
+                player.sendMessage(TextUtils.colorize("&cThis vehicle is being used right now, so it can't be deleted."));
+                return;
+            }
+            for (Player trunkViewer : VehicleData.getTrunkViewers(license)) trunkViewer.closeInventory();
+            VehicleFinder.despawn(spawned);
+        }
+
+        try {
+            ConfigModule.vehicleDataConfig.delete(license);
+        } catch (IllegalStateException e) {
+            ConfigModule.messagesConfig.sendMessage(player, Message.VEHICLE_ALREADY_DELETED);
+            MenuUtils.restoreCMD(player, MenuUtils.restorePage.getOrDefault(player, 1), MenuUtils.restoreUUID.get(player));
+            return;
+        }
+        Main.logInfo(player.getName() + " deleted the vehicle " + license + " in the restore menu.");
+        player.sendMessage(TextUtils.colorize("&aThe vehicle &f" + license + "&a was deleted" + (spawned != null ? " (and removed from the world)." : ".")));
+        MenuUtils.restoreCMD(player, MenuUtils.restorePage.getOrDefault(player, 1), MenuUtils.restoreUUID.get(player));
     }
 
     /**
