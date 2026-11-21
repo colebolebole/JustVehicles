@@ -2,6 +2,8 @@ package nl.mtvehicles.core;
 
 import nl.mtvehicles.core.infrastructure.dataconfig.DefaultConfig;
 import nl.mtvehicles.core.infrastructure.enums.SoftDependency;
+import nl.mtvehicles.core.infrastructure.dependencies.EzvacBridge;
+import nl.mtvehicles.core.infrastructure.hvac.HvacManager;
 import nl.mtvehicles.core.infrastructure.modules.*;
 import nl.mtvehicles.core.infrastructure.utils.PluginUpdater;
 import org.bukkit.Bukkit;
@@ -64,6 +66,9 @@ public class Main extends JavaPlugin {
         new ConfigModule();
         configsLoaded = true;
 
+        EzvacBridge.init();
+        HvacManager.start();
+
         if ((boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) PluginUpdater.checkNewVersion(getServer().getConsoleSender());
     }
 
@@ -74,6 +79,7 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onDisable(){
+        HvacManager.stop();
         // If the plugin was disabled before the configs were loaded, there is nothing to save (and touching ConfigModule would initialise it while the plugin is already disabled).
         if (configsLoaded) ConfigModule.vehicleDataConfig.saveToDisk();
         if (DependencyModule.isDependencyEnabled(SoftDependency.PLACEHOLDER_API) && DependencyModule.placeholderAPI != null) DependencyModule.placeholderAPI.unregisterOnDisable();

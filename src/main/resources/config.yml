@@ -208,3 +208,39 @@ usePlayerFacing: false
 # Makes vehicles significantly harder to control on ice.
 # Increases speed and rotation speed, as well as reduces friction on ice.
 slipperyIce: false
+
+
+# --- Car HVAC (climate control) ---
+
+# Vehicles get a climate control: the temperature inside the vehicle (the cabin) slowly follows the temperature outside,
+# the sun heats it up, and the A/C and heater bring it to a target temperature while the engine is running.
+# Occupants control it using the swap hands key (F) or '/vehicle hvac' - the settings are saved per vehicle.
+# If EZvac is installed, the temperature of the air around the vehicle (outside, or the room of a garage) is taken from it,
+# and the cabin is shown on EZvac's climate HUD.
+hvac:
+  enabled: true
+
+  # Which vehicle types have a climate control. Available: CAR, HOVER, TANK, HELICOPTER, AIRPLANE, BOAT.
+  vehicleTypes:
+    - CAR
+
+  # Where the cabin temperature is shown to the occupants:
+  #  AUTO      - on EZvac's HUD if EZvac is installed, otherwise on the action bar
+  #  EZVAC     - on EZvac's HUD only
+  #  ACTIONBAR - on the action bar
+  #  NONE      - not shown (only in the climate menu)
+  display: AUTO
+
+  # AUTO = the units EZvac shows (or F without EZvac). Or F / C.
+  units: AUTO
+
+  # Open the climate menu by pressing the swap hands key (F) while sitting in a vehicle.
+  openWithSwapKey: true
+
+  # Target temperature (in °F) of a vehicle which has not been set yet, and the range players may choose from.
+  defaultTarget: 70.0
+  minTarget: 60.0
+  maxTarget: 85.0
+
+  # Extra fuel (in % per second, at fan level 2) used while the A/C or heater is working. 0 = no extra fuel.
+  fuelUsage: 0.02

@@ -387,7 +387,15 @@ public class VehicleDataConfig extends MTVConfig {
         HEALTH("health"),
         NBT_VALUE("nbtValue"),
 
-        IS_PUBLIC("isPublic");
+        IS_PUBLIC("isPublic"),
+
+        /**
+         * Car HVAC (climate control) settings - see HvacManager
+         */
+        HVAC_ON("hvacOn"),
+        HVAC_MODE("hvacMode"),
+        HVAC_FAN("hvacFan"),
+        HVAC_TARGET("hvacTarget");
 
         final private String path;
 

@@ -376,7 +376,16 @@ public class DefaultConfig extends MTVConfig {
         REGION_ACTIONS_ENTER("regionActions.enter", "disabled"),
         REGION_ACTIONS_PICKUP("regionActions.pickup", "disabled"),
         REGION_ACTIONS_RIDE("regionActions.ride", "disabled"),
-        USE_PLAYER_FACING("usePlayerFacing", false);
+        USE_PLAYER_FACING("usePlayerFacing", false),
+        HVAC_ENABLED("hvac.enabled", true),
+        HVAC_VEHICLE_TYPES("hvac.vehicleTypes", new ArrayList<>(Arrays.asList("CAR"))),
+        HVAC_DISPLAY("hvac.display", "AUTO"),
+        HVAC_UNITS("hvac.units", "AUTO"),
+        HVAC_OPEN_WITH_SWAP_KEY("hvac.openWithSwapKey", true),
+        HVAC_DEFAULT_TARGET("hvac.defaultTarget", 70.0),
+        HVAC_MIN_TARGET("hvac.minTarget", 60.0),
+        HVAC_MAX_TARGET("hvac.maxTarget", 85.0),
+        HVAC_FUEL_USAGE("hvac.fuelUsage", 0.02);
 
         final private String path;
         final private Object defaultValue;
