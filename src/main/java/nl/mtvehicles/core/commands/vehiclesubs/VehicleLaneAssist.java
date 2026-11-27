@@ -9,7 +9,8 @@ import java.util.Locale;
 
 /**
  * <b>/vehicle laneassist (on|off)</b> (also <b>/vehicle lane</b>) - lane assist of the car you are sitting in: it keeps the car in the middle of the road
- * while you are not steering. Without an argument it switches it on or off. The setting is saved for the vehicle.
+ * in its lane while you are not steering. Without an argument it switches it on or off. The setting is saved for the vehicle.
+ * <b>/vehicle laneassist debug</b> shows the blocks around the car, as the assist sees them (to set up laneAssist.roadBlocks and laneLines).
  * Everyone may use it unless the permission 'mtvehicles.laneassist' is explicitly denied.
  *
  * @since 2.5.10
@@ -36,6 +37,11 @@ public class VehicleLaneAssist extends MTVSubCommand {
             return true;
         }
 
+        if (arguments.length >= 2 && arguments[1].equalsIgnoreCase("debug")) {
+            for (String line : LaneAssist.describe(player.getVehicle().getLocation())) sendMessage(line);
+            return true;
+        }
+
         final boolean current = LaneAssist.isOn(license);
         final boolean on;
         if (arguments.length >= 2) {
@@ -43,7 +49,7 @@ public class VehicleLaneAssist extends MTVSubCommand {
                 case "on": on = true; break;
                 case "off": on = false; break;
                 default:
-                    sendMessage("&cUse: /vehicle laneassist [on|off]");
+                    sendMessage("&cUse: /vehicle laneassist [on|off|debug]");
                     return true;
             }
         } else {

@@ -400,9 +400,13 @@ public class DefaultConfig extends MTVConfig {
         LANE_ASSIST_LOOK_AHEAD("laneAssist.lookAhead", 6.0),
         LANE_ASSIST_MAX_HALF_WIDTH("laneAssist.maxHalfWidth", 8.0),
         LANE_ASSIST_ROAD_BLOCKS("laneAssist.roadBlocks", new ArrayList<>(java.util.Arrays.asList(
-                "BLACK_CONCRETE", "GRAY_CONCRETE", "LIGHT_GRAY_CONCRETE", "WHITE_CONCRETE", "YELLOW_CONCRETE",
+                "BLACK_CONCRETE", "GRAY_CONCRETE", "LIGHT_GRAY_CONCRETE",
                 "SMOOTH_STONE", "SMOOTH_STONE_SLAB", "STONE", "STONE_SLAB", "ANDESITE", "POLISHED_ANDESITE", "POLISHED_ANDESITE_SLAB",
-                "POLISHED_BLACKSTONE", "POLISHED_BLACKSTONE_SLAB", "POLISHED_DEEPSLATE", "DIRT_PATH")));
+                "POLISHED_BLACKSTONE", "POLISHED_BLACKSTONE_SLAB", "POLISHED_DEEPSLATE", "DIRT_PATH"))),
+        // The paint on the road: the edges of the lanes
+        LANE_ASSIST_LANE_LINES("laneAssist.laneLines", new ArrayList<>(java.util.Arrays.asList(
+                "WHITE_CONCRETE", "YELLOW_CONCRETE", "LIME_CONCRETE", "ORANGE_CONCRETE",
+                "WHITE_CONCRETE_POWDER", "YELLOW_CONCRETE_POWDER", "LIME_CONCRETE_POWDER")));
 
         final private String path;
         final private Object defaultValue;

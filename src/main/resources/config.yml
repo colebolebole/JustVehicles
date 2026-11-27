@@ -272,9 +272,9 @@ hvac:
 
 # --- Lane assist ---
 
-# Keeps a car in the middle of the road while the driver is not steering, so you don't have to keep correcting it.
-# It looks left and right of the car until the road ends (the blocks in roadBlocks), finds the middle of the road here and a few blocks ahead,
-# and turns the car gently towards it. Steering always takes over, and it does nothing where it can't tell where the road is
+# Keeps a car in the middle of its lane while the driver is not steering, so you don't have to keep correcting it.
+# It looks left and right of the car until it meets a lane line (laneLines) or the end of the road (roadBlocks), finds the middle of the lane
+# here and a few blocks ahead, and turns the car gently towards it. Steering always takes over, and it does nothing where it can't tell where the road is
 # (not on a road, a very wide road or open area, the road ending ahead). It only works for cars.
 # Drivers can switch it off or on for their vehicle with /vehicle laneassist (the setting is saved for the vehicle).
 laneAssist:
@@ -291,13 +291,12 @@ laneAssist:
   lookAhead: 6.0
   maxHalfWidth: 8.0
 
-  # The blocks roads are made of (including the lines painted on them). Add the blocks your roads are made of.
+  # The blocks the road is made of (the asphalt, and the curbs if cars may drive on them). Add the blocks your roads are made of.
+  # Not sure what a block is called? Sit in a car and use /vehicle laneassist debug - it shows the blocks around the car.
   roadBlocks:
     - BLACK_CONCRETE
     - GRAY_CONCRETE
     - LIGHT_GRAY_CONCRETE
-    - WHITE_CONCRETE
-    - YELLOW_CONCRETE
     - SMOOTH_STONE
     - SMOOTH_STONE_SLAB
     - STONE
@@ -309,3 +308,14 @@ laneAssist:
     - POLISHED_BLACKSTONE_SLAB
     - POLISHED_DEEPSLATE
     - DIRT_PATH
+
+  # The paint on the road: the edges of the lanes. The car is centered between the lines (or between a line and the edge of the road), so it stays in its
+  # own lane instead of drifting to the middle of a road with two lanes. Dashed lines work. A block which is a lane line doesn't need to be in roadBlocks.
+  laneLines:
+    - WHITE_CONCRETE
+    - YELLOW_CONCRETE
+    - LIME_CONCRETE
+    - ORANGE_CONCRETE
+    - WHITE_CONCRETE_POWDER
+    - YELLOW_CONCRETE_POWDER
+    - LIME_CONCRETE_POWDER
