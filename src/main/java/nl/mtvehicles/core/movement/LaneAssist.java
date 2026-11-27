@@ -178,6 +178,9 @@ public final class LaneAssist {
                                      double rightX, double rightZ, int floor, double maxHalfWidth) {
         if (kind(world, x, z, floor) == NONE) return Double.NaN;
 
+        // On a narrow road (an older road with one line down the middle) the lines are only decoration: centre on the road, not on half of it
+        final boolean narrow = isNarrow(world, x, z, rightX, rightZ, floor, maxHalfWidth);
+
         // The nearest line or road edge on each side, anywhere in the window (so a gap in a dashed line is skipped)
         final double[] nearest = {Double.MAX_VALUE, Double.MAX_VALUE};
         for (int k = -WINDOW; k <= WINDOW; k++) {
@@ -186,7 +189,7 @@ public final class LaneAssist {
             for (int side = 0; side < 2; side++) {
                 final double sign = side == 0 ? -1.0 : 1.0;
                 for (double t = STEP; t <= maxHalfWidth; t += STEP) {
-                    if (kind(world, px + sign * rightX * t, pz + sign * rightZ * t, floor) != ROAD) {
+                    if (isEdge(kind(world, px + sign * rightX * t, pz + sign * rightZ * t, floor), narrow)) {
                         nearest[side] = Math.min(nearest[side], t - STEP / 2.0);
                         break;
                     }
@@ -209,6 +212,32 @@ public final class LaneAssist {
             boundary[side] = found;
         }
         return (boundary[1] - boundary[0]) / 2.0;
+    }
+
+    /**
+     * Whether something is the edge of the lane: a lane line or the end of the road - on a narrow road only the end of the road.
+     */
+    private static boolean isEdge(int kind, boolean narrow) {
+        return narrow ? kind == NONE : kind != ROAD;
+    }
+
+    /**
+     * Whether the road at a point is narrow: from edge to edge (lines included) it is at most laneAssist.narrowRoadWidth blocks wide.
+     */
+    private static boolean isNarrow(World world, double x, double z, double rightX, double rightZ, int floor, double maxHalfWidth) {
+        final double limit = number(DefaultConfig.Option.LANE_ASSIST_NARROW_ROAD_WIDTH, 8.0);
+        if (limit <= 0) return false;
+        double width = 0;
+        for (int side = 0; side < 2; side++) {
+            final double sign = side == 0 ? -1.0 : 1.0;
+            double edge = -1;
+            for (double t = STEP; t <= maxHalfWidth; t += STEP) {
+                if (kind(world, x + sign * rightX * t, z + sign * rightZ * t, floor) == NONE) { edge = t - STEP / 2.0; break; }
+            }
+            if (edge < 0) return false;
+            width += edge;
+        }
+        return width <= limit;
     }
 
     /**
@@ -279,19 +308,21 @@ public final class LaneAssist {
         }
         // Where it thinks the edges of the lane are (straight left and right of the car, as it reads them)
         final double maxHalfWidth = Math.max(2.0, Math.min(16.0, number(DefaultConfig.Option.LANE_ASSIST_MAX_HALF_WIDTH, 8.0)));
+        final boolean narrow = isNarrow(world, location.getX(), location.getZ(), rightX, rightZ, floor, maxHalfWidth);
         final double[] edge = {Double.NaN, Double.NaN};
         final String[] edgeText = {"nothing within " + (int) maxHalfWidth + " blocks", "nothing within " + (int) maxHalfWidth + " blocks"};
         for (int side = 0; side < 2; side++) {
             final double sign = side == 0 ? -1.0 : 1.0;
             for (double t = STEP; t <= maxHalfWidth; t += STEP) {
                 final double px = location.getX() + sign * rightX * t, pz = location.getZ() + sign * rightZ * t;
-                if (kind(world, px, pz, floor) != ROAD) {
+                if (isEdge(kind(world, px, pz, floor), narrow)) {
                     edge[side] = t - STEP / 2.0;
                     edgeText[side] = label(world, px, pz, floor);
                     break;
                 }
             }
         }
+        if (narrow) lines.add("&bNarrow road (at most " + number(DefaultConfig.Option.LANE_ASSIST_NARROW_ROAD_WIDTH, 8.0) + " blocks wide): lines are ignored and the car is centered on the road.");
         lines.add("&7Left edge of the lane: &f" + (Double.isNaN(edge[0]) ? "-" : String.format(java.util.Locale.ROOT, "%.1f blocks", edge[0])) + " &8-> " + edgeText[0]);
         lines.add("&7Right edge of the lane: &f" + (Double.isNaN(edge[1]) ? "-" : String.format(java.util.Locale.ROOT, "%.1f blocks", edge[1])) + " &8-> " + edgeText[1]);
         if (Double.isNaN(edge[0]) || Double.isNaN(edge[1])) {

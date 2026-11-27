@@ -289,6 +289,10 @@ laneAssist:
   lookAhead: 6.0
   maxHalfWidth: 8.0
 
+  # A road which is at most this many blocks wide (edge to edge, lines included) is a narrow road, such as an older road with one line down the middle:
+  # the lines are ignored there and the car is centered on the road. Wider roads are centered lane by lane (between the lines). 0 = never.
+  narrowRoadWidth: 8.0
+
   # The blocks the road is made of (the asphalt, and the curbs if cars may drive on them). Add the blocks your roads are made of.
   # Not sure what a block is called? Sit in a car and use /vehicle laneassist debug - it shows the blocks around the car.
   roadBlocks:

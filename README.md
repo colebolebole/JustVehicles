@@ -51,8 +51,9 @@
 ### Lane assist (cars)
 - Keeps a car **in the middle of its lane while you aren't steering**, so you don't have to keep correcting it. Steering always takes over (the assist backs off for a moment), and it does nothing where it can't tell where the lane is (not on a road, a very wide road or open area, the road ending ahead).
 - It finds the lane by looking left and right of the car for **lane lines** (`laneAssist.laneLines`, e.g. white/yellow/lime concrete; dashed lines work) or the end of the **road** (`laneAssist.roadBlocks`), here and a few blocks ahead.
+- **Narrow roads** (up to `laneAssist.narrowRoadWidth` blocks wide, 8 by default - for example an older road with a single line down the middle): the lines are ignored and the car is centered on the road. Wider roads are centered lane by lane.
 - `/vehicle laneassist [on|off]` (also `/vehicle lane`) switches it for the vehicle you're in. **`/vehicle laneassist debug`** shows the blocks around the car as the assist sees them, so you can add your own road and line blocks to the config.
-- Settings in `config.yml` under `laneAssist:` (`enabled`, `defaultOn`, `strength`, `lookAhead`, `maxHalfWidth`, `roadBlocks`, `laneLines`). It is on by default - set `defaultOn: false` if you'd rather have drivers turn it on.
+- Settings in `config.yml` under `laneAssist:` (`enabled`, `defaultOn`, `strength`, `lookAhead`, `maxHalfWidth`, `narrowRoadWidth`, `roadBlocks`, `laneLines`). It is on by default - set `defaultOn: false` if you'd rather have drivers turn it on.
 
 ---
 

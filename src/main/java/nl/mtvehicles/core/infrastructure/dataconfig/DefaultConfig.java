@@ -399,6 +399,7 @@ public class DefaultConfig extends MTVConfig {
         LANE_ASSIST_STRENGTH("laneAssist.strength", 0.5),
         LANE_ASSIST_LOOK_AHEAD("laneAssist.lookAhead", 6.0),
         LANE_ASSIST_MAX_HALF_WIDTH("laneAssist.maxHalfWidth", 8.0),
+        LANE_ASSIST_NARROW_ROAD_WIDTH("laneAssist.narrowRoadWidth", 8.0),
         LANE_ASSIST_ROAD_BLOCKS("laneAssist.roadBlocks", new ArrayList<>(java.util.Arrays.asList(
                 "BLACK_CONCRETE", "GRAY_CONCRETE", "LIGHT_GRAY_CONCRETE",
                 "STONE", "STONE_SLAB", "ANDESITE", "POLISHED_ANDESITE", "POLISHED_ANDESITE_SLAB",
