@@ -60,7 +60,7 @@
 
 1. Download the jar from the releases of this repository (or build it: `mvn package` with JDK 21 - the jar is `target/MTVehicles.jar`).
 2. Put it in your server's `plugins/` folder, replacing MTVehicles, and use the MTVehicles resource pack linked above.
-3. Restart the server (not a reload). New options are added to `config.yml` automatically when they're missing; look for `hvac:` and `laneAssist:`.
+3. Restart the server (not a reload). Options missing from an existing `config.yml` simply use their defaults. To change them, copy the `hvac:` and `laneAssist:` blocks from the [config.yml](src/main/resources/config.yml) in this repository (or delete your `config.yml` to get a fresh one).
 
 The plugin is still called **MTVehicles** inside (plugin name, commands and permissions), so addons and Skript scripts written for MTVehicles keep working.
 
