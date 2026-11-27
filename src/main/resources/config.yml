@@ -295,8 +295,6 @@ laneAssist:
     - BLACK_CONCRETE
     - GRAY_CONCRETE
     - LIGHT_GRAY_CONCRETE
-    - SMOOTH_STONE
-    - SMOOTH_STONE_SLAB
     - STONE
     - STONE_SLAB
     - ANDESITE
@@ -311,6 +309,8 @@ laneAssist:
   # own lane instead of drifting to the middle of a road with two lanes. Dashed lines work. A block which is a lane line doesn't need to be in roadBlocks.
   laneLines:
     - WHITE_CONCRETE
+    - SMOOTH_STONE
+    - SMOOTH_STONE_SLAB
     - YELLOW_CONCRETE
     - LIME_CONCRETE
     - ORANGE_CONCRETE

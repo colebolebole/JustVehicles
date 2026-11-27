@@ -277,6 +277,31 @@ public final class LaneAssist {
             }
             lines.add(text.toString());
         }
+        // Where it thinks the edges of the lane are (straight left and right of the car, as it reads them)
+        final double maxHalfWidth = Math.max(2.0, Math.min(16.0, number(DefaultConfig.Option.LANE_ASSIST_MAX_HALF_WIDTH, 8.0)));
+        final double[] edge = {Double.NaN, Double.NaN};
+        final String[] edgeText = {"nothing within " + (int) maxHalfWidth + " blocks", "nothing within " + (int) maxHalfWidth + " blocks"};
+        for (int side = 0; side < 2; side++) {
+            final double sign = side == 0 ? -1.0 : 1.0;
+            for (double t = STEP; t <= maxHalfWidth; t += STEP) {
+                final double px = location.getX() + sign * rightX * t, pz = location.getZ() + sign * rightZ * t;
+                if (kind(world, px, pz, floor) != ROAD) {
+                    edge[side] = t - STEP / 2.0;
+                    edgeText[side] = label(world, px, pz, floor);
+                    break;
+                }
+            }
+        }
+        lines.add("&7Left edge of the lane: &f" + (Double.isNaN(edge[0]) ? "-" : String.format(java.util.Locale.ROOT, "%.1f blocks", edge[0])) + " &8-> " + edgeText[0]);
+        lines.add("&7Right edge of the lane: &f" + (Double.isNaN(edge[1]) ? "-" : String.format(java.util.Locale.ROOT, "%.1f blocks", edge[1])) + " &8-> " + edgeText[1]);
+        if (Double.isNaN(edge[0]) || Double.isNaN(edge[1])) {
+            lines.add("&cOne side has no edge in range, so the assist does nothing here.");
+        } else {
+            final double offset = (edge[1] - edge[0]) / 2.0;
+            lines.add(Math.abs(offset) < DEAD_ZONE
+                    ? "&aThe car is in the middle of the lane."
+                    : String.format(java.util.Locale.ROOT, "&eThe middle of the lane is %.1f blocks to the %s - the assist steers there.", Math.abs(offset), offset > 0 ? "right" : "left"));
+        }
         lines.add("&7Blocks marked &c(not set)&7 are neither road nor line: add them to laneAssist.roadBlocks or laneAssist.laneLines.");
         return lines;
     }
