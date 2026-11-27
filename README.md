@@ -58,7 +58,7 @@
 
 ## Installing
 
-1. Download the jar from the releases of this repository (or build it: `mvn package` with JDK 21 - the jar is `target/MTVehicles.jar`).
+1. Download the jar from the releases of this repository (or build it: `mvn package` with JDK 21 - the jar is `target/JustVehicles.jar`).
 2. Put it in your server's `plugins/` folder, replacing MTVehicles, and use the MTVehicles resource pack linked above.
 3. Restart the server (not a reload). Options missing from an existing `config.yml` simply use their defaults. To change them, copy the `hvac:` and `laneAssist:` blocks from the [config.yml](src/main/resources/config.yml) in this repository (or delete your `config.yml` to get a fresh one).
 
