@@ -21,18 +21,26 @@ import java.util.List;
  */
 @ToDo("Translate to multiple languages.")
 public class PluginUpdater {
-    private static boolean isEnabled = (boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE);
+    /**
+     * JustVehicles is a fork: the original MTVehicles updater would replace it with the original plugin (without the changes of this fork),
+     * so it is switched off for good - whatever the config says. Nothing contacts the MTVehicles servers.
+     */
+    private static final boolean isEnabled = false;
     private static String pluginVersion = VersionModule.getPluginVersion();
     private static String latestVersion;
 
     private static final int CONNECT_TIMEOUT_MS = 5000;
     private static final int READ_TIMEOUT_MS = 10000;
 
+    /**
+     * Whether the updater works at all (it doesn't in JustVehicles).
+     */
+    public static boolean isAvailable(){
+        return isEnabled;
+    }
+
     private static String getAPICheckerOutput(){
-        if (!isEnabled) {
-            Main.logWarning(ConfigModule.messagesConfig.getMessage(Message.UPDATE_DISABLED));
-            return null;
-        }
+        if (!isEnabled) return null;
         try {
             URLConnection connection = new URL("https://mtvehicles.github.io/auto-updater/index.html?now=" + getTimeStamp()).openConnection();
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
@@ -125,10 +133,7 @@ public class PluginUpdater {
     }
 
     private static boolean downloadUpdate() {
-        if (!isEnabled) {
-            Main.logWarning(ConfigModule.messagesConfig.getMessage(Message.UPDATE_DISABLED));
-            return false;
-        }
+        if (!isEnabled) return false;
         try {
             URL file = new URL("https://mtvehicles.github.io/auto-updater/MTVehicles.jar");
             File dest = new File("plugins");

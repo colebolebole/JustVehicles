@@ -22,7 +22,7 @@ public class VehicleVersion extends MTVSubCommand {
         if (!checkPermission("mtvehicles.admin")) return true;
 
         String pluginVersion = VersionModule.getPluginVersion();
-        String isLatest = (PluginUpdater.isLatestVersion() && !VersionModule.isDevRelease) ? " (latest)" : "";
+        String isLatest = (PluginUpdater.isAvailable() && PluginUpdater.isLatestVersion() && !VersionModule.isDevRelease) ? " (latest)" : "";
         String serverVersion = Bukkit.getVersion();
 
         sender.sendMessage(String.format("§2Running §aMTVehicles v%s§2%s.", pluginVersion, isLatest));

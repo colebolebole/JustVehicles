@@ -14,8 +14,8 @@ public class VehicleUpdate extends MTVSubCommand {
     public boolean execute() {
         if (!checkPermission("mtvehicles.update")) return true;
 
-        if (!(boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) {
-            sendMessage(Message.UPDATE_DISABLED);
+        if (!PluginUpdater.isAvailable() || !(boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) {
+            sendMessage("&cThe updater is turned off in JustVehicles: the original updater would replace it with the original MTVehicles. Install new versions of JustVehicles by hand.");
             return false;
         }
 

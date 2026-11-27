@@ -69,7 +69,7 @@ public class Main extends JavaPlugin {
         EzvacBridge.init();
         HvacManager.start();
 
-        if ((boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) PluginUpdater.checkNewVersion(getServer().getConsoleSender());
+        if (PluginUpdater.isAvailable() && (boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) PluginUpdater.checkNewVersion(getServer().getConsoleSender());
     }
 
     @Override

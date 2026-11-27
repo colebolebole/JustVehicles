@@ -28,7 +28,7 @@ public class JoinListener extends MTVListener {
             }
         }
 
-        if (!player.hasPermission("mtvehicles.update") || !(boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) return;
+        if (!PluginUpdater.isAvailable() || !player.hasPermission("mtvehicles.update") || !(boolean) ConfigModule.defaultConfig.get(DefaultConfig.Option.AUTO_UPDATE)) return;
 
         if (!VersionModule.isDevRelease) PluginUpdater.checkNewVersion(player);
     }

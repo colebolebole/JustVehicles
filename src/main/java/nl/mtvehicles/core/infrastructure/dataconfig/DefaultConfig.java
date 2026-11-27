@@ -331,7 +331,7 @@ public class DefaultConfig extends MTVConfig {
      * Options available in MTV's default configuration file (config.yml)
      */
     public enum Option {
-        AUTO_UPDATE("autoUpdate", true),
+        AUTO_UPDATE("autoUpdate", false),
         VEHICLE_MENU_SIZE("vehicleMenuSize", 3),
         HELICOPTER_BLADES_ALWAYS_ON("helicopterBladesAlwaysOn", true),
         DISABLE_PICKUP_FROM_WATER("disablePickupFromWater", false),

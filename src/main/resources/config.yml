@@ -7,12 +7,10 @@
 # ---------------------------------------------------------------------------
 
 
-# Leave this on true if you want to be up-to-date!
-# Turn it off and you will not get any messages for updates.
-# Auto-update message will show on server join if you have the permission 'mtvehicles.update'.
-# If set on false the /vehicle update command will not work either.
-# IMPORTANT: If this is enabled, the plugin WILL CONTACT OUR SERVERS to get the latest version and to download it. If you do not wish for this to happen, set this option to false.
-autoUpdate: true
+# JustVehicles: the updater is turned off in this build, whatever this says. The original updater would replace this plugin
+# with the original MTVehicles (without the changes of this fork), and nothing contacts the MTVehicles servers.
+# Install new versions of JustVehicles by hand.
+autoUpdate: false
 
 
 # --- General ---
