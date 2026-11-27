@@ -313,8 +313,18 @@ public class VehicleMovement {
             rotateVehicle(player.getLocation().getYaw());
         } else {
             final int rotation = (VehicleData.speed.get(license) < 0.1) ? rotationSpeed / 3 : rotationSpeed;
-            if (steerGetXxa() > 0) rotateVehicle(standMain.getLocation().getYaw() - rotation);
-            else if (steerGetXxa() < 0) rotateVehicle(standMain.getLocation().getYaw() + rotation);
+            final boolean assist = vehicleType.isCar() && LaneAssist.isAvailable() && LaneAssist.isOn(license);
+            if (steerGetXxa() > 0) {
+                if (assist) LaneAssist.steered(license);
+                rotateVehicle(standMain.getLocation().getYaw() - rotation);
+            } else if (steerGetXxa() < 0) {
+                if (assist) LaneAssist.steered(license);
+                rotateVehicle(standMain.getLocation().getYaw() + rotation);
+            } else if (assist && VehicleData.speed.get(license) > 0.1 && !isFalling) {
+                // Not steering: keep the car in the middle of the road
+                final float step = LaneAssist.yawStep(license, standMain.getLocation(), Math.max(0.5f, rotationSpeed * 0.4f));
+                if (step != 0f) rotateVehicle(standMain.getLocation().getYaw() + step);
+            }
         }
     }
 

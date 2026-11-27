@@ -59,6 +59,8 @@ public class VehicleSubCommandManager extends MTVCommand {
         CommandModule.subcommands.put("hvac", new VehicleHvac());
         CommandModule.subcommands.put("ac", new VehicleHvac());
         CommandModule.subcommands.put("climate", new VehicleHvac());
+        CommandModule.subcommands.put("laneassist", new VehicleLaneAssist());
+        CommandModule.subcommands.put("lane", new VehicleLaneAssist());
         CommandModule.subcommands.put("find", new VehicleFind());
         CommandModule.subcommands.put("finder", new VehicleFind());
     }

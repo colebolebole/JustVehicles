@@ -268,3 +268,44 @@ hvac:
     minimumOffSeconds: 10
     approachBandF: 3.0
     minimumCapacity: 0.4
+
+
+# --- Lane assist ---
+
+# Keeps a car in the middle of the road while the driver is not steering, so you don't have to keep correcting it.
+# It looks left and right of the car until the road ends (the blocks in roadBlocks), finds the middle of the road here and a few blocks ahead,
+# and turns the car gently towards it. Steering always takes over, and it does nothing where it can't tell where the road is
+# (not on a road, a very wide road or open area, the road ending ahead). It only works for cars.
+# Drivers can switch it off or on for their vehicle with /vehicle laneassist (the setting is saved for the vehicle).
+laneAssist:
+  enabled: true
+
+  # Whether vehicles have it on until their driver changes it.
+  defaultOn: true
+
+  # How firmly it turns the car back to the middle (0.05 = barely, 1 = firmly).
+  strength: 0.5
+
+  # How many blocks ahead it looks for the middle of the road, and how far (in blocks) from the car it looks for the edges of the road.
+  # A road wider than twice maxHalfWidth is not centered on.
+  lookAhead: 6.0
+  maxHalfWidth: 8.0
+
+  # The blocks roads are made of (including the lines painted on them). Add the blocks your roads are made of.
+  roadBlocks:
+    - BLACK_CONCRETE
+    - GRAY_CONCRETE
+    - LIGHT_GRAY_CONCRETE
+    - WHITE_CONCRETE
+    - YELLOW_CONCRETE
+    - SMOOTH_STONE
+    - SMOOTH_STONE_SLAB
+    - STONE
+    - STONE_SLAB
+    - ANDESITE
+    - POLISHED_ANDESITE
+    - POLISHED_ANDESITE_SLAB
+    - POLISHED_BLACKSTONE
+    - POLISHED_BLACKSTONE_SLAB
+    - POLISHED_DEEPSLATE
+    - DIRT_PATH

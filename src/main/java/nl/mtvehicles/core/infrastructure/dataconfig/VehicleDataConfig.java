@@ -403,7 +403,11 @@ public class VehicleDataConfig extends MTVConfig {
         /**
          * The climate control's own name (/vehicle hvac rename)
          */
-        HVAC_NAME("hvacName");
+        HVAC_NAME("hvacName"),
+        /**
+         * Lane assist (/vehicle laneassist) is switched on or off for this vehicle (Boolean). Not set: the default of the config.
+         */
+        LANE_ASSIST("laneAssist");
 
         final private String path;
 

@@ -393,7 +393,16 @@ public class DefaultConfig extends MTVConfig {
         HVAC_MIN_RUN_SECONDS("hvac.cycle.minimumRunSeconds", 15.0),
         HVAC_MIN_OFF_SECONDS("hvac.cycle.minimumOffSeconds", 10.0),
         HVAC_APPROACH_BAND_F("hvac.cycle.approachBandF", 3.0),
-        HVAC_MIN_CAPACITY("hvac.cycle.minimumCapacity", 0.4);
+        HVAC_MIN_CAPACITY("hvac.cycle.minimumCapacity", 0.4),
+        LANE_ASSIST_ENABLED("laneAssist.enabled", true),
+        LANE_ASSIST_DEFAULT_ON("laneAssist.defaultOn", true),
+        LANE_ASSIST_STRENGTH("laneAssist.strength", 0.5),
+        LANE_ASSIST_LOOK_AHEAD("laneAssist.lookAhead", 6.0),
+        LANE_ASSIST_MAX_HALF_WIDTH("laneAssist.maxHalfWidth", 8.0),
+        LANE_ASSIST_ROAD_BLOCKS("laneAssist.roadBlocks", new ArrayList<>(java.util.Arrays.asList(
+                "BLACK_CONCRETE", "GRAY_CONCRETE", "LIGHT_GRAY_CONCRETE", "WHITE_CONCRETE", "YELLOW_CONCRETE",
+                "SMOOTH_STONE", "SMOOTH_STONE_SLAB", "STONE", "STONE_SLAB", "ANDESITE", "POLISHED_ANDESITE", "POLISHED_ANDESITE_SLAB",
+                "POLISHED_BLACKSTONE", "POLISHED_BLACKSTONE_SLAB", "POLISHED_DEEPSLATE", "DIRT_PATH")));
 
         final private String path;
         final private Object defaultValue;
