@@ -61,7 +61,6 @@ public class Main extends JavaPlugin {
 
         new CommandModule();
         new ListenersModule();
-        new MetricsModule();
         new LoopModule();
         new ConfigModule();
         configsLoaded = true;
@@ -74,6 +73,8 @@ public class Main extends JavaPlugin {
 
     @Override
     public void onLoad(){
+        // No statistics are sent anywhere (JustVehicles has no bStats). NBT-API has its own bStats - it must be switched off before NBT-API is used for the first time.
+        de.tr7zw.changeme.nbtapi.utils.MinecraftVersion.disableBStats();
         new DependencyModule();
     }
 
@@ -98,6 +99,7 @@ public class Main extends JavaPlugin {
     }
 
     private void disableNBTAPIVersionMessages(){
+        de.tr7zw.changeme.nbtapi.utils.MinecraftVersion.disableBStats();
         de.tr7zw.changeme.nbtapi.utils.MinecraftVersion.disableUpdateCheck();
     }
 

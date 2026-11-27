@@ -62,7 +62,7 @@
 2. Put it in your server's `plugins/` folder, replacing MTVehicles, and use the MTVehicles resource pack linked above.
 3. Restart the server (not a reload). Options missing from an existing `config.yml` simply use their defaults. To change them, copy the `hvac:` and `laneAssist:` blocks from the [config.yml](src/main/resources/config.yml) in this repository (or delete your `config.yml` to get a fresh one).
 
-**The updater is turned off** (`autoUpdate: false`, and the code ignores the setting): the original MTVehicles updater would replace this build with the original plugin. `/vehicle update` does nothing, and nothing contacts the MTVehicles servers (bStats statistics, as in the original, are still sent unless you turn them off in `plugins/bStats/config.yml`). Install new versions by hand.
+**The updater is turned off** (`autoUpdate: false`, and the code ignores the setting): the original MTVehicles updater would replace this build with the original plugin. `/vehicle update` does nothing, and nothing contacts the MTVehicles servers. **bStats is removed too** (the plugin sends no usage statistics, and NBT-API's own bStats is switched off). Install new versions by hand.
 
 The plugin is still called **MTVehicles** inside (plugin name, commands and permissions), so addons and Skript scripts written for MTVehicles keep working.
 
